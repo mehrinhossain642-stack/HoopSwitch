@@ -1,0 +1,343 @@
+import type { Player, Team } from './types';
+
+/**
+ * Prototype seed data. Heights/weights are metric-canonical.
+ *
+ * Tuned so every posting has both a clear "great fit" (score >= 78) and a
+ * "close but undersized" partial whose weakest component is height. Scores as
+ * produced by lib/match.ts:
+ *
+ *   Starting PG    great: Marcus Webb 96     undersized: Elijah Carter 74
+ *   Wing scorer    great: Deshawn Price 94   undersized: Marcus Webb 55
+ *   Rim-protector  great: Andre Boucher 88   undersized: Tyrell Nkemdi 63
+ *   Backup PG      great: Marcus Webb 95     undersized: Elijah Carter 66
+ *
+ * Highlight URLs are placeholder YouTube links — the prototype only needs an
+ * external URL to open and a remote thumbnail to render.
+ */
+
+export const PLAYERS: Player[] = [
+  {
+    id: 'p1',
+    name: 'Marcus Webb',
+    position: 'PG',
+    height_cm: 188,
+    weight_kg: 84,
+    wingspan_cm: 196,
+    age: 22,
+    dominant_hand: 'Right',
+    eligibility_years: 1,
+    location: 'Toronto, ON',
+    bio: 'Downhill lead guard who plays with pace and pressures the rim every possession. Two-year captain, ran a top-10 offence in U SPORTS. Looking for a starting role where I can run the show for a final year.',
+    ppg: 24.1,
+    rpg: 4.8,
+    apg: 6.2,
+    fg_pct: 48,
+    careerStats: [
+      { season: '2024–25', team_name: 'Humber Hawks', gp: 24, ppg: 24.1, rpg: 4.8, apg: 6.2 },
+      { season: '2023–24', team_name: 'Humber Hawks', gp: 26, ppg: 19.4, rpg: 4.1, apg: 5.5 },
+      { season: '2022–23', team_name: 'Durham Lords', gp: 22, ppg: 13.8, rpg: 3.2, apg: 4.0 },
+    ],
+    highlights: [
+      {
+        id: 'h1',
+        title: '32 pts vs Carleton — full highlights',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        duration_seconds: 212,
+        thumbnail_url: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+      },
+      {
+        id: 'h2',
+        title: 'Pick-and-roll reads reel',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=ScMzIvxBSi4',
+        duration_seconds: 154,
+        thumbnail_url: 'https://img.youtube.com/vi/ScMzIvxBSi4/hqdefault.jpg',
+      },
+      {
+        id: 'h3',
+        title: 'Senior season mixtape',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+        duration_seconds: 328,
+        thumbnail_url: 'https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg',
+      },
+    ],
+  },
+  {
+    id: 'p2',
+    name: 'Elijah Carter',
+    position: 'PG',
+    height_cm: 178,
+    weight_kg: 79,
+    wingspan_cm: 186,
+    age: 20,
+    dominant_hand: 'Right',
+    eligibility_years: 2,
+    location: 'Halifax, NS',
+    bio: 'Undersized scoring guard with deep range and a quick trigger. Led the conference in points per game as a sophomore. Want to prove I can score at a higher level.',
+    ppg: 28.4,
+    rpg: 2.0,
+    apg: 3.1,
+    fg_pct: 42,
+    careerStats: [
+      { season: '2024–25', team_name: 'Dalhousie Tigers', gp: 20, ppg: 28.4, rpg: 2.0, apg: 3.1 },
+      { season: '2023–24', team_name: 'Dalhousie Tigers', gp: 18, ppg: 21.7, rpg: 1.8, apg: 2.4 },
+    ],
+    highlights: [
+      {
+        id: 'h4',
+        title: '41-point night vs Acadia',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+        duration_seconds: 268,
+        thumbnail_url: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
+      },
+      {
+        id: 'h5',
+        title: 'Pull-up three compilation',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+        duration_seconds: 141,
+        thumbnail_url: 'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg',
+      },
+    ],
+  },
+  {
+    id: 'p3',
+    name: 'Deshawn Price',
+    position: 'SG',
+    height_cm: 196,
+    weight_kg: 85,
+    wingspan_cm: 205,
+    age: 21,
+    dominant_hand: 'Right',
+    eligibility_years: 2,
+    location: 'Windsor, ON',
+    bio: 'Two-way wing with real size for the position. Comfortable guarding one through three and scoring off the catch. Shot 39% from three on high volume last season.',
+    ppg: 18.6,
+    rpg: 5.4,
+    apg: 3.0,
+    fg_pct: 46,
+    careerStats: [
+      { season: '2024–25', team_name: 'Windsor Lancers', gp: 22, ppg: 18.6, rpg: 5.4, apg: 3.0 },
+      { season: '2023–24', team_name: 'Windsor Lancers', gp: 24, ppg: 12.9, rpg: 4.6, apg: 2.2 },
+    ],
+    highlights: [
+      {
+        id: 'h6',
+        title: 'Two-way wing reel 2024–25',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=RgKAFK5djSk',
+        duration_seconds: 196,
+        thumbnail_url: 'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg',
+      },
+      {
+        id: 'h7',
+        title: 'Defensive possessions vs Brock',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+        duration_seconds: 173,
+        thumbnail_url: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
+      },
+    ],
+  },
+  {
+    id: 'p4',
+    name: 'Andre Boucher',
+    position: 'C',
+    height_cm: 208,
+    weight_kg: 104,
+    wingspan_cm: 218,
+    age: 23,
+    dominant_hand: 'Right',
+    eligibility_years: 1,
+    location: 'Montreal, QC',
+    bio: 'Traditional five who protects the paint and finishes everything inside. Led U SPORTS in blocks per game. Bilingual, comfortable anywhere in the country.',
+    ppg: 14.2,
+    rpg: 11.6,
+    apg: 1.4,
+    fg_pct: 55,
+    careerStats: [
+      { season: '2024–25', team_name: 'Concordia Stingers', gp: 23, ppg: 14.2, rpg: 11.6, apg: 1.4 },
+      { season: '2023–24', team_name: 'Concordia Stingers', gp: 21, ppg: 11.0, rpg: 9.8, apg: 1.1 },
+      { season: '2022–23', team_name: 'Vanier Cheetahs', gp: 25, ppg: 8.4, rpg: 8.2, apg: 0.9 },
+    ],
+    highlights: [
+      {
+        id: 'h8',
+        title: 'Rim protection — season reel',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=YQHsXMglC9A',
+        duration_seconds: 244,
+        thumbnail_url: 'https://img.youtube.com/vi/YQHsXMglC9A/hqdefault.jpg',
+      },
+      {
+        id: 'h9',
+        title: '18 & 15 vs McGill',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=CevxZvSJLk8',
+        duration_seconds: 187,
+        thumbnail_url: 'https://img.youtube.com/vi/CevxZvSJLk8/hqdefault.jpg',
+      },
+    ],
+  },
+  {
+    id: 'p5',
+    name: 'Jordan Ellis',
+    position: 'SF',
+    height_cm: 198,
+    weight_kg: 91,
+    wingspan_cm: 206,
+    age: 21,
+    dominant_hand: 'Left',
+    eligibility_years: 3,
+    location: 'Vancouver, BC',
+    bio: 'Connective forward who rebounds, moves the ball and takes the tough defensive assignment. Not the first option, but three years of eligibility and a high floor.',
+    ppg: 11.4,
+    rpg: 6.8,
+    apg: 2.6,
+    fg_pct: 44,
+    careerStats: [
+      { season: '2024–25', team_name: 'UBC Thunderbirds', gp: 21, ppg: 11.4, rpg: 6.8, apg: 2.6 },
+      { season: '2023–24', team_name: 'UBC Thunderbirds', gp: 19, ppg: 7.2, rpg: 5.1, apg: 1.9 },
+    ],
+    highlights: [
+      {
+        id: 'h10',
+        title: 'Glue-guy tape 2024–25',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=e-ORhEE9VVg',
+        duration_seconds: 165,
+        thumbnail_url: 'https://img.youtube.com/vi/e-ORhEE9VVg/hqdefault.jpg',
+      },
+    ],
+  },
+  {
+    id: 'p6',
+    name: 'Tyrell Nkemdi',
+    position: 'PF',
+    height_cm: 203,
+    weight_kg: 99,
+    wingspan_cm: 213,
+    age: 22,
+    dominant_hand: 'Right',
+    eligibility_years: 2,
+    location: 'Brampton, ON',
+    bio: 'Mobile big who can switch onto guards and stretch it to the arc. Played a lot of five out of necessity last year — happiest at the four next to a rim protector.',
+    ppg: 16.8,
+    rpg: 9.2,
+    apg: 1.8,
+    fg_pct: 51,
+    careerStats: [
+      { season: '2024–25', team_name: 'Ryerson Rams', gp: 25, ppg: 16.8, rpg: 9.2, apg: 1.8 },
+      { season: '2023–24', team_name: 'Ryerson Rams', gp: 23, ppg: 12.4, rpg: 7.6, apg: 1.3 },
+    ],
+    highlights: [
+      {
+        id: 'h11',
+        title: 'Switch-everything defence reel',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=lp-EO5I60KA',
+        duration_seconds: 158,
+        thumbnail_url: 'https://img.youtube.com/vi/lp-EO5I60KA/hqdefault.jpg',
+      },
+      {
+        id: 'h12',
+        title: 'Pick-and-pop highlights',
+        source_type: 'external',
+        url: 'https://www.youtube.com/watch?v=hT_nvWreIhg',
+        duration_seconds: 132,
+        thumbnail_url: 'https://img.youtube.com/vi/hT_nvWreIhg/hqdefault.jpg',
+      },
+    ],
+  },
+];
+
+export const TEAMS: Team[] = [
+  {
+    id: 't1',
+    name: 'Western Mustangs',
+    league: 'U SPORTS · OUA',
+    location: 'London, ON',
+    wins: 18,
+    losses: 6,
+    roster_size: 14,
+    coach_name: 'Mike Bradley',
+    about: 'Perennial OUA contender running a five-out, pace-and-space system. We graduated three starters and are rebuilding the backcourt around a lead guard who can organise the offence from day one.',
+    postings: [
+      {
+        id: 'ps1',
+        team_id: 't1',
+        position: 'PG',
+        ideal_height_cm: 186,
+        ideal_weight_kg: 82,
+        expected_minutes: 28,
+        status: 'open',
+        notes: 'Immediate impact starter. Must be able to run pick-and-roll as the primary handler and defend at the point of attack.',
+        headline: 'Looking for a starting Point Guard',
+        posted_ago: '2h ago',
+        applicant_count: 12,
+      },
+      {
+        id: 'ps2',
+        team_id: 't1',
+        position: 'SG',
+        ideal_height_cm: 196,
+        ideal_weight_kg: 88,
+        expected_minutes: 24,
+        status: 'open',
+        notes: 'Wing scorer with size to guard multiple positions. Catch-and-shoot volume is the priority.',
+        headline: 'Wing scorer with size wanted',
+        posted_ago: '1d ago',
+        applicant_count: 8,
+      },
+      {
+        id: 'ps3',
+        team_id: 't1',
+        position: 'C',
+        ideal_height_cm: 210,
+        ideal_weight_kg: 100,
+        expected_minutes: 26,
+        status: 'open',
+        notes: 'Rim protector to anchor the defence. Screening and short-roll passing matter more than post scoring.',
+        headline: 'Rim-protecting Centre needed',
+        posted_ago: '3d ago',
+        applicant_count: 5,
+      },
+    ],
+  },
+  {
+    id: 't2',
+    name: 'Carleton Ravens',
+    league: 'U SPORTS · OUA',
+    location: 'Ottawa, ON',
+    wins: 21,
+    losses: 3,
+    roster_size: 15,
+    coach_name: 'Dana Whitfield',
+    about: 'Defence-first program with a deep rotation and a long track record of national championships. We develop guards into complete two-way players.',
+    postings: [
+      {
+        id: 'ps4',
+        team_id: 't2',
+        position: 'PG',
+        ideal_height_cm: 190,
+        ideal_weight_kg: 84,
+        expected_minutes: 17,
+        status: 'in_review',
+        notes: 'Backup PG for the rotation. Defensive specialist who can steady the second unit for 15–20 minutes.',
+        headline: 'Backup PG needed for rotation',
+        posted_ago: '1d ago',
+        applicant_count: 19,
+      },
+    ],
+  },
+];
+
+/** The player persona for the Player flow. */
+export const CURRENT_PLAYER_ID = 'p1';
+
+/** The team persona for the Coach flow. */
+export const CURRENT_TEAM_ID = 't1';
