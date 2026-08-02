@@ -1,0 +1,135 @@
+# This file is auto-generated from the current state of the database. Instead
+# of editing this file, please use the migrations feature of Active Record to
+# incrementally modify your database, and then regenerate this schema definition.
+#
+# This file is the source Rails uses to define your schema when running `bin/rails
+# db:schema:load`. When creating a new database, `bin/rails db:schema:load` tends to
+# be faster and is potentially less error prone than running all of your
+# migrations from scratch. Old migrations may fail to apply correctly if those
+# migrations use external dependencies or application code.
+#
+# It's strongly recommended that you check this file into your version control system.
+
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
+  create_table "career_stats", force: :cascade do |t|
+    t.decimal "apg", precision: 4, scale: 1, default: "0.0", null: false
+    t.datetime "created_at", null: false
+    t.integer "gp", default: 0, null: false
+    t.bigint "player_profile_id", null: false
+    t.decimal "ppg", precision: 4, scale: 1, default: "0.0", null: false
+    t.decimal "rpg", precision: 4, scale: 1, default: "0.0", null: false
+    t.string "season", null: false
+    t.string "team_name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["player_profile_id", "season"], name: "index_career_stats_on_player_profile_id_and_season", unique: true
+    t.index ["player_profile_id"], name: "index_career_stats_on_player_profile_id"
+  end
+
+  create_table "connections", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "initiated_by", null: false
+    t.bigint "player_profile_id", null: false
+    t.bigint "posting_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["player_profile_id"], name: "index_connections_on_player_profile_id"
+    t.index ["posting_id", "player_profile_id"], name: "index_connections_on_posting_id_and_player_profile_id", unique: true
+    t.index ["posting_id"], name: "index_connections_on_posting_id"
+    t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying, 'coach'::character varying]::text[])", name: "connections_initiated_by_check"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying]::text[])", name: "connections_status_check"
+  end
+
+  create_table "highlights", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "duration_seconds"
+    t.bigint "player_profile_id", null: false
+    t.string "source_type", default: "external", null: false
+    t.string "thumbnail_url"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["player_profile_id"], name: "index_highlights_on_player_profile_id"
+    t.check_constraint "source_type::text = ANY (ARRAY['external'::character varying, 'uploaded'::character varying]::text[])", name: "highlights_source_type_check"
+  end
+
+  create_table "player_profiles", force: :cascade do |t|
+    t.integer "age", null: false
+    t.decimal "apg", precision: 4, scale: 1, default: "0.0", null: false
+    t.text "bio"
+    t.datetime "created_at", null: false
+    t.string "dominant_hand", default: "Right", null: false
+    t.integer "eligibility_years", default: 1, null: false
+    t.decimal "fg_pct", precision: 4, scale: 1, default: "0.0", null: false
+    t.integer "height_cm", null: false
+    t.string "location"
+    t.string "name", null: false
+    t.string "position", null: false
+    t.decimal "ppg", precision: 4, scale: 1, default: "0.0", null: false
+    t.decimal "rpg", precision: 4, scale: 1, default: "0.0", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.decimal "weight_kg", precision: 5, scale: 1, null: false
+    t.integer "wingspan_cm", null: false
+    t.index ["position"], name: "index_player_profiles_on_position"
+    t.index ["user_id"], name: "index_player_profiles_on_user_id", unique: true
+    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[])", name: "player_profiles_position_check"
+    t.check_constraint "dominant_hand::text = ANY (ARRAY['Left'::character varying, 'Right'::character varying, 'Ambidextrous'::character varying]::text[])", name: "player_profiles_hand_check"
+  end
+
+  create_table "postings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "expected_minutes", default: 20, null: false
+    t.string "headline"
+    t.integer "ideal_height_cm", null: false
+    t.decimal "ideal_weight_kg", precision: 5, scale: 1, null: false
+    t.text "notes"
+    t.string "position", null: false
+    t.string "status", default: "open", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["position"], name: "index_postings_on_position"
+    t.index ["status"], name: "index_postings_on_status"
+    t.index ["team_id"], name: "index_postings_on_team_id"
+    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[])", name: "postings_position_check"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'in_review'::character varying, 'closed'::character varying]::text[])", name: "postings_status_check"
+  end
+
+  create_table "teams", force: :cascade do |t|
+    t.text "about"
+    t.string "coach_name"
+    t.datetime "created_at", null: false
+    t.string "league"
+    t.string "location"
+    t.string "logo_url"
+    t.integer "losses", default: 0, null: false
+    t.string "name", null: false
+    t.integer "roster_size", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.integer "wins", default: 0, null: false
+    t.index ["user_id"], name: "index_teams_on_user_id", unique: true
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.string "encrypted_password", default: "", null: false
+    t.string "jti", null: false
+    t.string "role", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["jti"], name: "index_users_on_jti", unique: true
+    t.check_constraint "role::text = ANY (ARRAY['player'::character varying, 'coach'::character varying]::text[])", name: "users_role_check"
+  end
+
+  add_foreign_key "career_stats", "player_profiles"
+  add_foreign_key "connections", "player_profiles"
+  add_foreign_key "connections", "postings"
+  add_foreign_key "highlights", "player_profiles"
+  add_foreign_key "player_profiles", "users"
+  add_foreign_key "postings", "teams"
+  add_foreign_key "teams", "users"
+end

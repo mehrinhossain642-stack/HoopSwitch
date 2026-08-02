@@ -27,6 +27,18 @@ npm run typecheck   # tsc --noEmit, strict
 npx expo-doctor      # 18/18 checks pass
 ```
 
+### Backend
+
+The Rails API lives in [`api/`](api/) and runs independently:
+
+```bash
+cd api
+brew services start postgresql@17   # once
+bundle install
+bin/rails db:prepare                # create + migrate + seed
+bin/rails server -p 3001
+```
+
 ### Why Expo SDK 54 and not the latest
 
 Pinned to **SDK 54** deliberately, so it opens in Expo Go on a physical phone.
@@ -57,7 +69,15 @@ app/            expo-router routes
 components/     Card, MatchChip, StatBlock, PositionBadge, EditableField, TabBar, …
 data/           types.ts + seed.ts (6 players, 2 teams, 4 postings)
 lib/            match.ts (scoring engine), store.tsx (in-memory state), units, theme, labels
+api/            Rails 8 API-only backend — see api/README.md
 ```
+
+This is a monorepo: the Expo client at the root, the Rails API under `api/`. Metro's
+`blockList` excludes `api/` so the bundler doesn't watch a Ruby tree.
+
+**The client is not yet wired to the API** — it still reads `data/seed.ts` in memory, exactly
+as before. The backend is built, tested and runnable independently; connecting the two is the
+next step.
 
 ## Match engine
 
