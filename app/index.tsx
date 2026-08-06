@@ -5,12 +5,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../components/Card';
 import { useApp } from '../lib/store';
 import { COLORS } from '../lib/theme';
-
+import { getProfile, login } from '../lib/api';
 /** Role select — the prototype's stand-in for auth. */
 export default function RoleSelect() {
   const { currentPlayer, currentTeam, allPostings } = useApp();
   const openSlots = allPostings.filter((posting) => posting.status === 'open').length;
+  async function testBackendLogin() {
+  try {
+    const token = await login(
+      'marcus.webb@example.com',
+      'password123'
+    );
 
+    console.log('Frontend connected to backend!');
+    console.log(token);
+
+    const profile = await getProfile(token);
+
+    console.log('Profile loaded from backend!');
+    console.log(profile);
+  } catch (error) {
+    console.error('Frontend/backend connection failed:', error);
+  }
+}
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
       <View className="flex-1 justify-between px-5 py-8">
@@ -28,7 +45,14 @@ export default function RoleSelect() {
           <Text className="font-sans-semibold mb-3 text-[12px] uppercase tracking-widest text-slate">
             Choose a view
           </Text>
-
+          <Pressable
+            onPress={testBackendLogin}
+            className="mb-4 rounded-btn bg-primary px-4 py-3"
+          >
+            <Text className="font-sans-semibold text-center text-white">
+              Test Backend Connection
+            </Text>
+          </Pressable>
           <RoleCard
             href="/player"
             icon="basketball-outline"
