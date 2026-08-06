@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { getProfile, login } from '../../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../components/Avatar';
 import { Card } from '../../../components/Card';
@@ -20,7 +22,45 @@ const HANDS: readonly DominantHand[] = ['Left', 'Right', 'Ambidextrous'];
 /** Player Profile — own view, editable. Every commit re-scores the job feed. */
 export default function PlayerProfile() {
   const { currentPlayer, updatePlayer, addHighlight, appliedPostingIds } = useApp();
-  const player = currentPlayer;
+
+  const [backendPlayer, setBackendPlayer] = useState<typeof currentPlayer | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const token = await login(
+          'marcus.webb@example.com',
+          'password123'
+        );
+
+        const profile = await getProfile(token);
+
+        const mappedPlayer = {
+          ...currentPlayer,
+          ...profile,
+
+          // Rails uses snake_case; frontend expects careerStats
+          careerStats: profile.career_stats ?? currentPlayer.careerStats,
+
+          // Make sure these remain arrays
+          highlights: profile.highlights ?? [],
+        };
+
+        setBackendPlayer(mappedPlayer);
+
+        console.log('Player profile is now using Rails data:', mappedPlayer);
+      } catch (error) {
+        console.error('Could not load backend player:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, []);
+
+  const player = backendPlayer ?? currentPlayer;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
@@ -33,6 +73,13 @@ export default function PlayerProfile() {
           </Text>
           <SwitchRoleButton />
         </View>
+        <Text className="font-sans mb-2 text-[11px] text-slate">
+          {loading
+            ? 'Loading profile from Rails...'
+            : backendPlayer
+              ? 'Profile loaded from Rails API'
+              : 'Using local fallback data'}
+        </Text>
 
         {/* Hero */}
         <Card className="items-center pb-5 pt-6">
