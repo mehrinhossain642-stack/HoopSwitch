@@ -1,9 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Text, View } from 'react-native';
-import type { MatchResult } from '../lib/match';
-import type { PostingWithTeam } from '../lib/store';
+import type { ApiPosting } from '../lib/api';
 import { COLORS } from '../lib/theme';
 import { cmToFeetInches, kgToLbs } from '../lib/units';
+import { relativeTime } from '../lib/time';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -13,24 +13,25 @@ import { SpecRow } from './SpecRow';
 import { StatusPill } from './StatusPill';
 
 type PostingCardProps = {
-  posting: PostingWithTeam;
-  match: MatchResult;
+  posting: ApiPosting;
   applied: boolean;
   onApply: () => void;
   onPress: () => void;
 };
 
-/** Job-feed card: team, headline, spec row, fit chip, Apply CTA. */
-export function PostingCard({ posting, match, applied, onApply, onPress }: PostingCardProps) {
+/** Job-feed card: team, headline, spec row, server-scored fit chip, Apply CTA. */
+export function PostingCard({ posting, applied, onApply, onPress }: PostingCardProps) {
+  const teamName = posting.team?.name ?? 'Unknown team';
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
       <Card className="mb-3">
         <View className="flex-row items-center">
-          <Avatar name={posting.team.name} size={38} shape="square" />
+          <Avatar name={teamName} size={38} shape="square" />
           <View className="ml-3 flex-1">
-            <Text className="font-sans-bold text-[14px] text-ink">{posting.team.name}</Text>
+            <Text className="font-sans-bold text-[14px] text-ink">{teamName}</Text>
             <Text className="font-sans mt-0.5 text-[12px] text-slate">
-              {posting.team.league} · {posting.team.location}
+              {[posting.team?.league, posting.team?.location].filter(Boolean).join(' · ')}
             </Text>
           </View>
           <StatusPill status={posting.status} />
@@ -53,15 +54,21 @@ export function PostingCard({ posting, match, applied, onApply, onPress }: Posti
           />
         </View>
 
-        <View className="mt-3">
-          <MatchChip score={match.score} tier={match.tier} reason={match.reason} />
-        </View>
+        {posting.match ? (
+          <View className="mt-3">
+            <MatchChip
+              score={posting.match.score}
+              tier={posting.match.tier}
+              reason={posting.match.reason}
+            />
+          </View>
+        ) : null}
 
         <View className="mt-3 flex-row items-center justify-between border-t border-border pt-3">
           <View className="flex-row items-center">
             <Ionicons name="time-outline" size={13} color={COLORS.slate} />
             <Text className="font-sans ml-1 text-[12px] text-slate">
-              Posted {posting.posted_ago}
+              Posted {relativeTime(posting.created_at)}
             </Text>
           </View>
           <Button

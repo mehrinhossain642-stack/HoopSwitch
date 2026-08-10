@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import {
   Image,
   ImageBackground,
@@ -8,8 +9,18 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSession } from '../lib/session';
 
 export default function SplashScreen() {
+  const { user, restoring } = useSession();
+
+  // A stored session should skip the sign-in gate entirely — otherwise
+  // persisting the JWT buys nothing and every cold start asks for a password.
+  useEffect(() => {
+    if (restoring || !user) return;
+    router.replace(user.role === 'coach' ? '/coach' : '/player');
+  }, [restoring, user]);
+
   return (
     <View className="flex-1 items-center justify-center bg-black">
       {/* Exact Figma frame: 300 x 650 */}

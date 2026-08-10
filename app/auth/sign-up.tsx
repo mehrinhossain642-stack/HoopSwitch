@@ -9,9 +9,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signup, type UserRole } from '../../lib/api';
+import type { UserRole } from '../../lib/api';
+import { useSession } from '../../lib/session';
+import { errorMessage } from '../../lib/useApi';
 
 export default function SignUpScreen() {
+  const { signUp } = useSession();
   const params = useLocalSearchParams<{ role?: string }>();
 
   const initialRole: UserRole =
@@ -51,26 +54,18 @@ export default function SignUpScreen() {
     try {
       setLoading(true);
 
-      const result = await signup(
+      // signUp persists the JWT, so the session survives an app restart.
+      const user = await signUp(
         email.trim().toLowerCase(),
         password,
         confirmPassword,
-        role
+        role,
+        fullName
       );
 
-      console.log('Account created:', result.user);
-
-      if (role === 'player') {
-        router.replace('/player');
-      } else {
-        router.replace('/coach');
-      }
+      router.replace(user.role === 'coach' ? '/coach' : '/player');
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to create account.'
-      );
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }

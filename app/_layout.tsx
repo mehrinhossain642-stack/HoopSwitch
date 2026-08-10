@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppProvider } from '../lib/store';
+import { SessionProvider } from '../lib/session';
 import { COLORS } from '../lib/theme';
 
 export default function RootLayout() {
@@ -40,7 +40,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppProvider>
+        <SessionProvider>
           <StatusBar style="dark" />
           {ready ? (
             <Stack
@@ -49,6 +49,7 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: COLORS.bg },
               }}>
               <Stack.Screen name="index" />
+              <Stack.Screen name="auth" />
               <Stack.Screen name="player" />
               <Stack.Screen name="coach" />
             </Stack>
@@ -57,7 +58,7 @@ export default function RootLayout() {
               <ActivityIndicator color={COLORS.primary} />
             </View>
           )}
-        </AppProvider>
+        </SessionProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

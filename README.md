@@ -29,15 +29,37 @@ npx expo-doctor      # 18/18 checks pass
 
 ### Backend
 
-The Rails API lives in [`api/`](api/) and runs independently:
+The client now reads from the Rails API in [`api/`](api/), so **start it first**:
 
 ```bash
 cd api
 brew services start postgresql@17   # once
 bundle install
 bin/rails db:prepare                # create + migrate + seed
-bin/rails server -p 3001
+bin/rails server -p 3001 -b 0.0.0.0
 ```
+
+`-b 0.0.0.0` matters: without it Rails binds to localhost only and a phone
+running Expo Go can't reach it. The client resolves the API host from Expo's
+`hostUri` — your machine's LAN IP on device, `localhost` on web/simulator — so
+no manual IP editing is needed. Override with `EXPO_PUBLIC_API_URL` to point at
+a deployed API.
+
+> **Don't use `npx expo start --tunnel` with the API.** The tunnel forwards only
+> Metro's port (8081), so port 3001 is unreachable through it and every request
+> fails. Use plain `npx expo start` with the phone and laptop on the same Wi-Fi.
+> If you genuinely need a tunnel, expose the API separately and point
+> `EXPO_PUBLIC_API_URL` at that public URL:
+>
+> ```bash
+> cloudflared tunnel --url http://localhost:3001    # prints a https://… URL
+> EXPO_PUBLIC_API_URL=https://that-url.trycloudflare.com npx expo start --tunnel
+> ```
+
+Sign in with any seeded account (all use password `password123`), e.g.
+`marcus.webb@example.com` for the player flow or
+`mike.bradley@westernmustangs.example.com` for the coach flow. See
+[api/README.md](api/README.md) for the full list.
 
 ### Why Expo SDK 54 and not the latest
 
@@ -66,24 +88,31 @@ app/            expo-router routes
   coach/(tabs)/index.tsx       Coach Home — talent feed, scoped by slot
   coach/(tabs)/profile.tsx     Coach Profile — editable roster slots
   coach/player/[id].tsx        player detail + fit across all slots
+  auth/                        splash -> welcome -> sign-in / sign-up
 components/     Card, MatchChip, StatBlock, PositionBadge, EditableField, TabBar, …
-data/           types.ts + seed.ts (6 players, 2 teams, 4 postings)
-lib/            match.ts (scoring engine), store.tsx (in-memory state), units, theme, labels
+data/           types.ts (shared enums) + seed.ts (offline reference data)
+lib/            api.ts (typed API client), session.tsx (JWT + persistence),
+                useApi.ts (loading/error/refetch), units, theme, labels, time
 api/            Rails 8 API-only backend — see api/README.md
 ```
 
 This is a monorepo: the Expo client at the root, the Rails API under `api/`. Metro's
 `blockList` excludes `api/` so the bundler doesn't watch a Ruby tree.
 
-**The client is not yet wired to the API** — it still reads `data/seed.ts` in memory, exactly
-as before. The backend is built, tested and runnable independently; connecting the two is the
-next step.
+**The client is wired to the API.** Auth is a real JWT session persisted in
+`expo-secure-store` (localStorage on web); both feeds are scored and sorted server-side; and
+Apply/Invite write `connections` rows. There is no in-memory seed store any more — `lib/store.tsx`
+was removed.
+
+`lib/match.ts` and `data/seed.ts` are no longer imported by the app. They're kept as the
+offline reference the backend's `match_scorer_test.rb` pins its score matrix against; delete
+them if you don't want that safety net.
 
 ## Match engine
 
-`scoreMatch(player, posting)` in `lib/match.ts` is a pure weighted sum of four normalized
-sub-scores, and powers **both** feeds — the player feed scores postings against the current
-player, the coach feed scores players against the selected slot.
+Scoring runs **on the server** — `MatchScorer` in `api/app/services/match_scorer.rb`. Both
+feeds arrive already scored and sorted; the client just renders `match.score`, `match.tier` and
+`match.reason`. It's a pure weighted sum of four normalized sub-scores.
 
 | Component  | Weight | Rule                                                       |
 | ---------- | ------ | ---------------------------------------------------------- |
@@ -100,7 +129,11 @@ converted to ft/in + lbs for display in `lib/units.ts`.
 
 ## Editing re-scores live
 
-Every `EditableField` commit writes straight into the in-memory store, so both feeds re-sort
-on the next render. Shrinking Marcus Webb from 6'2" to 5'8" on the Player Profile, for
-example, drops him from 96% to 71% on the Mustangs' starting PG slot and swaps the top two
-cards in his feed.
+Every `EditableField` commit PATCHes the API optimistically, so the next feed load re-scores
+server-side. Shrinking Marcus Webb from 6'2" to 5'8" on the Player Profile drops him from 96%
+to 71% on the Mustangs' starting PG slot and swaps the top two cards in his feed. The same
+holds on the coach side: loosening a slot's ideal height re-ranks its candidates.
+
+Apply and Invite are real writes — both create a `connections` row, with `initiated_by`
+derived from the caller's role. A card renders as "Applied"/"Invited" when the API reports
+`connected: true`, so the state survives a reload rather than living in component state.

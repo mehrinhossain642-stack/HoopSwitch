@@ -1,55 +1,72 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../../../components/Card';
 import { Chip } from '../../../components/Chip';
 import { PlayerCard } from '../../../components/PlayerCard';
 import { PositionBadge } from '../../../components/PositionBadge';
-import type { Posting } from '../../../data/types';
+import { InlineError, ScreenError, ScreenLoading } from '../../../components/ScreenState';
+import * as api from '../../../lib/api';
+import type { ApiPlayer, ApiPosting } from '../../../lib/api';
 import { POSITION_LABEL, roleLabel } from '../../../lib/labels';
-import { scoreMatch, sortByMatch } from '../../../lib/match';
-import { useApp } from '../../../lib/store';
+import { useSession } from '../../../lib/session';
 import { COLORS } from '../../../lib/theme';
+import { errorMessage, useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbs } from '../../../lib/units';
 
-/** Coach Home — talent scored against the selected roster slot, best fit first. */
+/**
+ * Coach Home — talent scored by the API against the selected roster slot.
+ * Changing the slot refetches, so ranking always comes from the server.
+ */
 export default function CoachHome() {
   const router = useRouter();
-  const {
-    currentTeam,
-    players,
-    invitedPlayerIds,
-    messagedPlayerIds,
-    toggleInvite,
-    toggleMessage,
-  } = useApp();
+  const { requireToken, token } = useSession();
 
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<number | undefined>(undefined);
   const [slotPickerOpen, setSlotPickerOpen] = useState(false);
   const [highMatchesOnly, setHighMatchesOnly] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
-  // Fall back to the team's first posting so the feed is never unscoped.
-  const selectedSlot: Posting | undefined =
-    currentTeam.postings.find((posting) => posting.id === selectedSlotId) ??
-    currentTeam.postings[0];
+  const team = useApiData(() => api.getTeam(requireToken()), [token]);
+  const feed = useApiData(
+    () => api.getPlayerFeed(requireToken(), selectedSlotId),
+    [token, selectedSlotId]
+  );
 
-  const feed = useMemo(() => {
-    if (!selectedSlot) return [];
-    const scored = players.map((player) => ({
-      player,
-      match: scoreMatch(player, selectedSlot),
-    }));
-    const filtered = highMatchesOnly
-      ? scored.filter((item) => item.match.tier === 'good')
-      : scored;
-    return sortByMatch(
-      filtered,
-      (item) => item.match.score,
-      (item) => item.player.name
-    );
-  }, [players, selectedSlot, highMatchesOnly]);
+  const slots = team.data?.postings ?? [];
+  const selectedSlot = feed.data?.posting;
+
+  const players = useMemo(() => {
+    const list = feed.data?.players ?? [];
+    return highMatchesOnly ? list.filter((p) => p.match?.tier === 'good') : list;
+  }, [feed.data, highMatchesOnly]);
+
+  const invite = useCallback(
+    async (player: ApiPlayer) => {
+      if (player.connected || !selectedSlot) return;
+      setInviteError(null);
+
+      const optimistic = (feed.data?.players ?? []).map((item) =>
+        item.id === player.id ? { ...item, connected: true } : item
+      );
+      feed.setData({ posting: selectedSlot, players: optimistic });
+
+      try {
+        await api.createConnection(requireToken(), selectedSlot.id, player.id);
+      } catch (caught) {
+        setInviteError(errorMessage(caught));
+        feed.refetch();
+      }
+    },
+    [feed, selectedSlot, requireToken]
+  );
+
+  if (feed.loading && !feed.data) return <ScreenLoading label="Loading candidates" />;
+  if (feed.error && !feed.data) {
+    return <ScreenError message={feed.error} onRetry={feed.refetch} />;
+  }
 
   if (!selectedSlot) {
     return (
@@ -68,9 +85,16 @@ export default function CoachHome() {
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
       <FlatList
-        data={feed}
-        keyExtractor={(item) => item.player.id}
+        data={players}
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={feed.loading}
+            onRefresh={feed.refetch}
+            tintColor={COLORS.primary}
+          />
+        }
         ListHeaderComponent={
           <View className="pb-1 pt-2">
             <View className="mb-4 flex-row items-center justify-between">
@@ -78,13 +102,13 @@ export default function CoachHome() {
                 Hoop<Text className="text-primary">Switch</Text>
               </Text>
               <Text className="font-sans-semibold text-[12px] text-slate">
-                {currentTeam.name}
+                {team.data?.name ?? ''}
               </Text>
             </View>
 
             <SlotSelector
               slot={selectedSlot}
-              slots={currentTeam.postings}
+              slots={slots}
               open={slotPickerOpen}
               onToggle={() => setSlotPickerOpen((prev) => !prev)}
               onSelect={(id) => {
@@ -107,20 +131,20 @@ export default function CoachHome() {
               />
             </View>
 
+            {inviteError ? <InlineError message={inviteError} /> : null}
+
             <Text className="font-sans-semibold mb-3 text-[12px] uppercase tracking-widest text-slate">
-              {feed.length} {feed.length === 1 ? 'candidate' : 'candidates'} · best fit first
+              {players.length} {players.length === 1 ? 'candidate' : 'candidates'} · best fit
+              first
             </Text>
           </View>
         }
         renderItem={({ item }) => (
           <PlayerCard
-            player={item.player}
-            match={item.match}
-            invited={invitedPlayerIds.includes(item.player.id)}
-            messaged={messagedPlayerIds.includes(item.player.id)}
-            onInvite={() => toggleInvite(item.player.id)}
-            onMessage={() => toggleMessage(item.player.id)}
-            onPress={() => router.push(`/coach/player/${item.player.id}`)}
+            player={item}
+            invited={item.connected === true}
+            onInvite={() => invite(item)}
+            onPress={() => router.push(`/coach/player/${item.id}`)}
           />
         )}
         ListEmptyComponent={
@@ -128,8 +152,8 @@ export default function CoachHome() {
             <Ionicons name="flame-outline" size={24} color={COLORS.slate} />
             <Text className="font-display mt-3 text-[16px] text-ink">No high matches yet</Text>
             <Text className="font-sans mt-1 text-center text-[13px] leading-[18px] text-slate">
-              Switch back to all candidates, or loosen this slot&apos;s ideal height and
-              weight on your profile.
+              Switch back to all candidates, or loosen this slot&apos;s ideal height and weight
+              on your profile.
             </Text>
           </View>
         }
@@ -139,11 +163,11 @@ export default function CoachHome() {
 }
 
 type SlotSelectorProps = {
-  slot: Posting;
-  slots: Posting[];
+  slot: ApiPosting;
+  slots: ApiPosting[];
   open: boolean;
   onToggle: () => void;
-  onSelect: (id: string) => void;
+  onSelect: (id: number) => void;
 };
 
 /** "Showing fits for ▾" dropdown that scopes the feed to a single posting. */

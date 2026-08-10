@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../components/Avatar';
@@ -9,29 +10,74 @@ import { CareerStatsTable } from '../../../components/CareerStatsTable';
 import { HighlightCard } from '../../../components/HighlightCard';
 import { MatchChip } from '../../../components/MatchChip';
 import { PositionBadge } from '../../../components/PositionBadge';
+import { InlineError, ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
 import { SpecRow } from '../../../components/SpecRow';
 import { StatBlock } from '../../../components/StatBlock';
+import * as api from '../../../lib/api';
+import type { ApiMatch, ApiPosting } from '../../../lib/api';
 import { roleLabel } from '../../../lib/labels';
-import { scoreMatch } from '../../../lib/match';
-import { useApp } from '../../../lib/store';
+import { useSession } from '../../../lib/session';
 import { COLORS } from '../../../lib/theme';
+import { errorMessage, useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbsLabel } from '../../../lib/units';
 
-/** Player detail from the coach's side, scored against the team's top slot. */
+/**
+ * Player detail from the coach's side. Scores the player against *every* slot
+ * on the roster by fetching each slot's feed — a coach comparing one player
+ * wants to know which of their openings he actually fills.
+ */
 export default function PlayerDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const {
-    getPlayer,
-    currentTeam,
-    invitedPlayerIds,
-    messagedPlayerIds,
-    toggleInvite,
-    toggleMessage,
-  } = useApp();
+  const { requireToken, token } = useSession();
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
-  const player = getPlayer(id);
+  const data = useApiData(async () => {
+    const authToken = requireToken();
+    const team = await api.getTeam(authToken);
+    const slots = team.postings ?? [];
+
+    // One request per slot. Fine at MVP scale (a handful of slots); if rosters
+    // grow this wants a dedicated endpoint rather than a fan-out.
+    const feeds = await Promise.all(
+      slots.map((slot) => api.getPlayerFeed(authToken, slot.id))
+    );
+
+    const fits = feeds
+      .map((feed) => {
+        const player = feed.players.find((p) => String(p.id) === String(id));
+        return player?.match ? { posting: feed.posting, match: player.match } : null;
+      })
+      .filter((entry): entry is { posting: ApiPosting; match: ApiMatch } => entry !== null)
+      .sort((a, b) => b.match.score - a.match.score);
+
+    const player = feeds
+      .flatMap((feed) => feed.players)
+      .find((p) => String(p.id) === String(id));
+
+    return { player, fits };
+  }, [token, id]);
+
+  const invite = useCallback(async () => {
+    const best = data.data?.fits[0];
+    if (!best || !data.data?.player) return;
+    setInviteError(null);
+    try {
+      await api.createConnection(requireToken(), best.posting.id, data.data.player.id);
+      data.refetch();
+    } catch (caught) {
+      setInviteError(errorMessage(caught));
+    }
+  }, [data, requireToken]);
+
+  if (data.loading && !data.data) return <ScreenLoading label="Loading player" />;
+  if (data.error && !data.data) {
+    return <ScreenError message={data.error} onRetry={data.refetch} />;
+  }
+
+  const player = data.data?.player;
+  const fits = data.data?.fits ?? [];
 
   if (!player) {
     return (
@@ -48,14 +94,6 @@ export default function PlayerDetail() {
     );
   }
 
-  const invited = invitedPlayerIds.includes(player.id);
-  const messaged = messagedPlayerIds.includes(player.id);
-
-  // Fit against every slot on the roster, best first — a coach comparing one
-  // player wants to know which of their openings he actually fills.
-  const fits = currentTeam.postings
-    .map((posting) => ({ posting, match: scoreMatch(player, posting) }))
-    .sort((a, b) => b.match.score - a.match.score);
   const bestFit = fits[0];
 
   return (
@@ -63,6 +101,8 @@ export default function PlayerDetail() {
       <DetailHeader onBack={() => router.back()} title="Player" />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}>
+        {inviteError ? <InlineError message={inviteError} /> : null}
+
         <Card className="items-center pb-5 pt-6">
           <Avatar name={player.name} size={84} />
           <View className="mt-4 flex-row items-center">
@@ -137,7 +177,17 @@ export default function PlayerDetail() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingRight: 4 }}>
             {player.highlights.map((highlight) => (
-              <HighlightCard key={highlight.id} highlight={highlight} />
+              <HighlightCard
+                key={highlight.id}
+                highlight={{
+                  id: String(highlight.id),
+                  title: highlight.title,
+                  source_type: 'external',
+                  url: highlight.url,
+                  duration_seconds: highlight.duration_seconds ?? 0,
+                  thumbnail_url: highlight.thumbnail_url ?? '',
+                }}
+              />
             ))}
           </ScrollView>
         </View>
@@ -152,26 +202,25 @@ export default function PlayerDetail() {
         <View className="mt-5">
           <SectionTitle title="Career Stats" className="mb-3" />
           <Card>
-            <CareerStatsTable stats={player.careerStats} />
+            <CareerStatsTable
+              stats={player.career_stats.map((stat) => ({
+                season: stat.season,
+                team_name: stat.team_name,
+                gp: stat.gp,
+                ppg: stat.ppg,
+                rpg: stat.rpg,
+                apg: stat.apg,
+              }))}
+            />
           </Card>
         </View>
 
-        <View className="mt-6 flex-row">
+        <View className="mt-6">
           <Button
-            label="Message"
-            doneLabel="Messaged"
-            done={messaged}
-            variant="secondary"
-            onPress={() => toggleMessage(player.id)}
-            className="flex-1"
-          />
-          <View className="w-3" />
-          <Button
-            label="Invite to visit"
+            label={bestFit ? `Invite to ${roleLabel(bestFit.posting.position, bestFit.posting.expected_minutes)}` : 'Invite'}
             doneLabel="Invited"
-            done={invited}
-            onPress={() => toggleInvite(player.id)}
-            className="flex-1"
+            done={player.connected === true}
+            onPress={invite}
           />
         </View>
       </ScrollView>

@@ -1,18 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../components/Avatar';
 import { Card } from '../../../components/Card';
 import { EditableField } from '../../../components/EditableField';
 import { PositionBadge } from '../../../components/PositionBadge';
+import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
 import { StatBlock } from '../../../components/StatBlock';
 import { DotPill, StatusPill } from '../../../components/StatusPill';
 import { SwitchRoleButton } from '../../../components/SwitchRoleButton';
-import type { Position, Posting, PostingStatus } from '../../../data/types';
+import type { Position, PostingStatus } from '../../../data/types';
+import * as api from '../../../lib/api';
+import type { ApiPosting, PostingPatch } from '../../../lib/api';
 import { POSITION_LABEL, roleLabel } from '../../../lib/labels';
-import { useApp } from '../../../lib/store';
+import { useSession } from '../../../lib/session';
 import { COLORS } from '../../../lib/theme';
+import { relativeTime } from '../../../lib/time';
+import { useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbsLabel, parseHeightToCm, parseLbsToKg } from '../../../lib/units';
 
 const POSITIONS: readonly Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
@@ -23,11 +29,26 @@ const STATUS_LABELS: Record<PostingStatus, string> = {
   closed: 'Closed',
 };
 
-/** Coach Profile — own view. Slot edits re-score the talent feed. */
+/** Coach Profile — own view. Slot edits PATCH the API and re-score the feed. */
 export default function CoachProfile() {
-  const { currentTeam, updatePosting, updateTeam, addPosting, invitedPlayerIds } = useApp();
-  const team = currentTeam;
-  const openSlots = team.postings.filter((posting) => posting.status === 'open').length;
+  const { requireToken, token } = useSession();
+  const team = useApiData(() => api.getTeam(requireToken()), [token]);
+  const { data, refetch } = team;
+
+  const updateSlot = useCallback(
+    (id: number, patch: PostingPatch): boolean => {
+      api.updatePosting(requireToken(), id, patch).then(refetch).catch(refetch);
+      return true;
+    },
+    [requireToken, refetch]
+  );
+
+  if (team.loading && !data) return <ScreenLoading label="Loading your team" />;
+  if (team.error && !data) return <ScreenError message={team.error} onRetry={refetch} />;
+  if (!data) return <ScreenError message="Team unavailable" onRetry={refetch} />;
+
+  const postings = data.postings ?? [];
+  const openSlots = data.open_slots_count ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
@@ -43,24 +64,22 @@ export default function CoachProfile() {
 
         {/* Hero */}
         <Card className="items-center pb-5 pt-6">
-          <Avatar name={team.name} size={84} shape="square" />
-          <Text className="font-display mt-4 text-[24px] text-ink">{team.name}</Text>
+          <Avatar name={data.name} size={84} shape="square" />
+          <Text className="font-display mt-4 text-[24px] text-ink">{data.name}</Text>
           <Text className="font-sans mt-1 text-[13px] text-slate">
-            {team.league} · {team.location}
+            {[data.league, data.location].filter(Boolean).join(' · ')}
           </Text>
           <Text className="font-sans-semibold mt-1 text-[13px] text-ink">
-            Head Coach · {team.coach_name}
+            Head Coach · {data.coach_name}
           </Text>
           <View className="mt-3">
-            <DotPill
-              label={`Recruiting — ${openSlots} open slot${openSlots === 1 ? '' : 's'}`}
-            />
+            <DotPill label={`Recruiting — ${openSlots} open slot${openSlots === 1 ? '' : 's'}`} />
           </View>
 
           <View className="mt-5 w-full flex-row border-t border-border pt-4">
-            <StatBlock value={`${team.wins}–${team.losses}`} label="RECORD" />
-            <StatBlock value={team.roster_size} label="ROSTER" />
-            <StatBlock value={invitedPlayerIds.length} label="INVITES" />
+            <StatBlock value={data.record} label="RECORD" />
+            <StatBlock value={data.roster_size} label="ROSTER" />
+            <StatBlock value={postings.length} label="SLOTS" />
           </View>
         </Card>
 
@@ -71,21 +90,34 @@ export default function CoachProfile() {
             className="mb-3"
             action={
               <Text className="font-sans-semibold text-[12px] text-slate">
-                {team.postings.length} total
+                {postings.length} total
               </Text>
             }
           />
 
-          {team.postings.map((posting) => (
+          {postings.map((posting) => (
             <SlotCard
               key={posting.id}
               posting={posting}
-              onUpdate={(patch) => updatePosting(posting.id, patch)}
+              onUpdate={(patch) => updateSlot(posting.id, patch)}
             />
           ))}
 
           <Pressable
-            onPress={() => addPosting(team.id)}
+            onPress={() => {
+              api
+                .createPosting(requireToken(), {
+                  position: 'SF',
+                  ideal_height_cm: 198,
+                  ideal_weight_kg: 90,
+                  expected_minutes: 20,
+                  status: 'open',
+                  headline: 'New roster slot',
+                  notes: 'Describe the role, system fit and what you need from this spot.',
+                })
+                .then(refetch)
+                .catch(refetch);
+            }}
             className="mt-1 items-center rounded-card border border-dashed border-border bg-surface px-6 py-6"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
             <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} />
@@ -103,12 +135,12 @@ export default function CoachProfile() {
           <Card>
             <EditableField
               label="About the program"
-              value={team.about}
+              value={data.about ?? ''}
               multiline
               onCommit={(next) => {
                 const trimmed = next.trim();
                 if (trimmed.length === 0) return false;
-                updateTeam(team.id, { about: trimmed });
+                api.updateTeam(requireToken(), { about: trimmed }).then(refetch).catch(refetch);
                 return true;
               }}
             />
@@ -120,11 +152,11 @@ export default function CoachProfile() {
 }
 
 type SlotCardProps = {
-  posting: Posting;
-  onUpdate: (patch: Partial<Posting>) => void;
+  posting: ApiPosting;
+  onUpdate: (patch: PostingPatch) => boolean;
 };
 
-/** One editable posting. Every commit flows into the shared store. */
+/** One editable posting. Every commit PATCHes /postings/:id. */
 function SlotCard({ posting, onUpdate }: SlotCardProps) {
   return (
     <Card className="mb-3" bare>
@@ -143,10 +175,7 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           label="Position"
           value={posting.position}
           options={POSITIONS}
-          onCommit={(next) => {
-            onUpdate({ position: next as Position });
-            return true;
-          }}
+          onCommit={(next) => onUpdate({ position: next as Position })}
         />
         <EditableField
           label="Ideal Height"
@@ -156,8 +185,7 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           onCommit={(next) => {
             const cm = parseHeightToCm(next);
             if (cm === null || cm < 150 || cm > 240) return false;
-            onUpdate({ ideal_height_cm: cm });
-            return true;
+            return onUpdate({ ideal_height_cm: cm });
           }}
         />
         <EditableField
@@ -168,8 +196,7 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           onCommit={(next) => {
             const kg = parseLbsToKg(next);
             if (kg === null || kg < 50 || kg > 180) return false;
-            onUpdate({ ideal_weight_kg: kg });
-            return true;
+            return onUpdate({ ideal_weight_kg: kg });
           }}
         />
         <EditableField
@@ -179,8 +206,7 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           onCommit={(next) => {
             const minutes = Number(next.trim());
             if (!Number.isFinite(minutes) || minutes < 1 || minutes > 40) return false;
-            onUpdate({ expected_minutes: Math.round(minutes) });
-            return true;
+            return onUpdate({ expected_minutes: Math.round(minutes) });
           }}
         />
         <EditableField
@@ -191,15 +217,14 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           onCommit={(next) => {
             const match = STATUS_OPTIONS.find((status) => STATUS_LABELS[status] === next);
             if (!match) return false;
-            onUpdate({ status: match });
-            return true;
+            return onUpdate({ status: match });
           }}
         />
       </View>
 
       <View className="flex-row items-center justify-between border-t border-border px-4 py-3">
         <Text className="font-sans text-[12px] text-slate">
-          {POSITION_LABEL[posting.position]} · posted {posting.posted_ago}
+          {POSITION_LABEL[posting.position]} · posted {relativeTime(posting.created_at)}
         </Text>
         <View className="flex-row items-center">
           <Ionicons name="people-outline" size={14} color={COLORS.slate} />

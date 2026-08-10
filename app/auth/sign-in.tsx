@@ -9,9 +9,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { login } from '../../lib/api';
+import { useSession } from '../../lib/session';
+import { errorMessage } from '../../lib/useApi';
 
 export default function SignInScreen() {
+  const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,24 +30,12 @@ export default function SignInScreen() {
     try {
       setLoading(true);
 
-      const token = await login(
-        email.trim().toLowerCase(),
-        password
-      );
-
-      console.log('Signed in successfully');
-      console.log(token);
-
-      // For now, route to player.
-      // We'll make this role-aware after we update login()
-      // to return the backend user object too.
-      router.replace('/player');
+      // signIn persists the JWT and returns the user, so routing is role-aware
+      // rather than always landing on the player flow.
+      const user = await signIn(email.trim().toLowerCase(), password);
+      router.replace(user.role === 'coach' ? '/coach' : '/player');
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to sign in.'
-      );
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
