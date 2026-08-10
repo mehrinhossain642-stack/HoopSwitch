@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { getProfile, login } from '../../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../components/Avatar';
 import { Card } from '../../../components/Card';
@@ -8,59 +7,53 @@ import { CareerStatsTable } from '../../../components/CareerStatsTable';
 import { EditableField } from '../../../components/EditableField';
 import { AddHighlightTile, HighlightCard } from '../../../components/HighlightCard';
 import { PositionBadge } from '../../../components/PositionBadge';
+import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
 import { StatBlock } from '../../../components/StatBlock';
 import { DotPill } from '../../../components/StatusPill';
 import { SwitchRoleButton } from '../../../components/SwitchRoleButton';
 import type { DominantHand, Position } from '../../../data/types';
-import { useApp } from '../../../lib/store';
+import * as api from '../../../lib/api';
+import type { ApiPlayer, ProfilePatch } from '../../../lib/api';
+import { useSession } from '../../../lib/session';
+import { useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbsLabel, parseHeightToCm, parseLbsToKg } from '../../../lib/units';
 
 const POSITIONS: readonly Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 const HANDS: readonly DominantHand[] = ['Left', 'Right', 'Ambidextrous'];
 
-/** Player Profile — own view, editable. Every commit re-scores the job feed. */
+/**
+ * Player Profile — own view, editable, backed by the Rails API.
+ * Every commit PATCHes /profile, so the job feed re-scores server-side.
+ */
 export default function PlayerProfile() {
-  const { currentPlayer, updatePlayer, addHighlight, appliedPostingIds } = useApp();
+  const { requireToken, token } = useSession();
 
-  const [backendPlayer, setBackendPlayer] = useState<typeof currentPlayer | null>(null);
-  const [loading, setLoading] = useState(true);
+  const profile = useApiData<ApiPlayer>(() => api.getProfile(requireToken()), [token]);
+  const connections = useApiData(() => api.listConnections(requireToken()), [token]);
 
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const token = await login(
-          'marcus.webb@example.com',
-          'password123'
-        );
+  const { data: player, setData: setPlayer, refetch } = profile;
 
-        const profile = await getProfile(token);
+  /**
+   * Optimistically apply the edit, then PATCH. On failure we revert by
+   * refetching, and EditableField shows its rejected state.
+   */
+  const commit = useCallback(
+    (patch: ProfilePatch): boolean => {
+      if (!player) return false;
+      setPlayer({ ...player, ...patch } as ApiPlayer);
 
-        const mappedPlayer = {
-          ...currentPlayer,
-          ...profile,
+      api.updateProfile(requireToken(), patch).then(setPlayer).catch(refetch);
+      return true;
+    },
+    [player, setPlayer, requireToken, refetch]
+  );
 
-          // Rails uses snake_case; frontend expects careerStats
-          careerStats: profile.career_stats ?? currentPlayer.careerStats,
+  if (profile.loading && !player) return <ScreenLoading label="Loading your profile" />;
+  if (profile.error && !player) return <ScreenError message={profile.error} onRetry={refetch} />;
+  if (!player) return <ScreenError message="Profile unavailable" onRetry={refetch} />;
 
-          // Make sure these remain arrays
-          highlights: profile.highlights ?? [],
-        };
-
-        setBackendPlayer(mappedPlayer);
-
-        console.log('Player profile is now using Rails data:', mappedPlayer);
-      } catch (error) {
-        console.error('Could not load backend player:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProfile();
-  }, []);
-
-  const player = backendPlayer ?? currentPlayer;
+  const applicationCount = connections.data?.connections.length ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
@@ -73,13 +66,6 @@ export default function PlayerProfile() {
           </Text>
           <SwitchRoleButton />
         </View>
-        <Text className="font-sans mb-2 text-[11px] text-slate">
-          {loading
-            ? 'Loading profile from Rails...'
-            : backendPlayer
-              ? 'Profile loaded from Rails API'
-              : 'Using local fallback data'}
-        </Text>
 
         {/* Hero */}
         <Card className="items-center pb-5 pt-6">
@@ -118,8 +104,7 @@ export default function PlayerProfile() {
               onCommit={(next) => {
                 const cm = parseHeightToCm(next);
                 if (cm === null || cm < 140 || cm > 240) return false;
-                updatePlayer(player.id, { height_cm: cm });
-                return true;
+                return commit({ height_cm: cm });
               }}
             />
             <EditableField
@@ -130,8 +115,7 @@ export default function PlayerProfile() {
               onCommit={(next) => {
                 const kg = parseLbsToKg(next);
                 if (kg === null || kg < 45 || kg > 180) return false;
-                updatePlayer(player.id, { weight_kg: kg });
-                return true;
+                return commit({ weight_kg: kg });
               }}
             />
             <EditableField
@@ -142,27 +126,20 @@ export default function PlayerProfile() {
               onCommit={(next) => {
                 const cm = parseHeightToCm(next);
                 if (cm === null || cm < 140 || cm > 260) return false;
-                updatePlayer(player.id, { wingspan_cm: cm });
-                return true;
+                return commit({ wingspan_cm: cm });
               }}
             />
             <EditableField
               label="Primary Pos."
               value={player.position}
               options={POSITIONS}
-              onCommit={(next) => {
-                updatePlayer(player.id, { position: next as Position });
-                return true;
-              }}
+              onCommit={(next) => commit({ position: next as Position })}
             />
             <EditableField
               label="Dominant Hand"
               value={player.dominant_hand}
               options={HANDS}
-              onCommit={(next) => {
-                updatePlayer(player.id, { dominant_hand: next as DominantHand });
-                return true;
-              }}
+              onCommit={(next) => commit({ dominant_hand: next as DominantHand })}
             />
             <EditableField
               label="Age"
@@ -172,8 +149,7 @@ export default function PlayerProfile() {
               onCommit={(next) => {
                 const age = Number(next.trim());
                 if (!Number.isFinite(age) || age < 15 || age > 40) return false;
-                updatePlayer(player.id, { age: Math.round(age) });
-                return true;
+                return commit({ age: Math.round(age) });
               }}
             />
           </Card>
@@ -190,9 +166,30 @@ export default function PlayerProfile() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingRight: 4 }}>
             {player.highlights.map((highlight) => (
-              <HighlightCard key={highlight.id} highlight={highlight} />
+              <HighlightCard
+                key={highlight.id}
+                highlight={{
+                  id: String(highlight.id),
+                  title: highlight.title,
+                  source_type: 'external',
+                  url: highlight.url,
+                  duration_seconds: highlight.duration_seconds ?? 0,
+                  thumbnail_url: highlight.thumbnail_url ?? '',
+                }}
+              />
             ))}
-            <AddHighlightTile onPress={() => addHighlight(player.id)} />
+            <AddHighlightTile
+              onPress={() => {
+                api
+                  .addHighlight(requireToken(), {
+                    title: 'Untitled clip — tap to edit later',
+                    url: 'https://www.youtube.com/',
+                    duration_seconds: 120,
+                  })
+                  .then(refetch)
+                  .catch(refetch);
+              }}
+            />
           </ScrollView>
         </View>
 
@@ -201,13 +198,12 @@ export default function PlayerProfile() {
           <Card>
             <EditableField
               label="About me"
-              value={player.bio}
+              value={player.bio ?? ''}
               multiline
               onCommit={(next) => {
                 const trimmed = next.trim();
                 if (trimmed.length === 0) return false;
-                updatePlayer(player.id, { bio: trimmed });
-                return true;
+                return commit({ bio: trimmed });
               }}
             />
           </Card>
@@ -217,7 +213,16 @@ export default function PlayerProfile() {
         <View className="mt-5">
           <SectionTitle title="Career Stats" className="mb-3" />
           <Card>
-            <CareerStatsTable stats={player.careerStats} />
+            <CareerStatsTable
+              stats={player.career_stats.map((stat) => ({
+                season: stat.season,
+                team_name: stat.team_name,
+                gp: stat.gp,
+                ppg: stat.ppg,
+                rpg: stat.rpg,
+                apg: stat.apg,
+              }))}
+            />
           </Card>
         </View>
 
@@ -228,9 +233,7 @@ export default function PlayerProfile() {
               <Text className="font-sans-semibold text-[13px] text-ink">
                 Active applications
               </Text>
-              <Text className="font-display text-[18px] text-primary">
-                {appliedPostingIds.length}
-              </Text>
+              <Text className="font-display text-[18px] text-primary">{applicationCount}</Text>
             </View>
             <Text className="font-sans mt-1 text-[12px] leading-[17px] text-slate">
               Apply from the Home feed to track roster spots here.

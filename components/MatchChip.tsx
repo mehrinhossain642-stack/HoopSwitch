@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text, View } from 'react-native';
-import type { MatchTier } from '../lib/match';
+import type { ApiMatch } from '../lib/api';
 import { COLORS } from '../lib/theme';
 
 type MatchChipProps = {
   score: number;
-  tier: MatchTier;
+  /** Scoring is server-side now, so the tier comes off the API payload. */
+  tier: ApiMatch['tier'];
   reason: string;
 };
 

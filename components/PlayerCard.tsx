@@ -1,6 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import type { Player } from '../data/types';
-import type { MatchResult } from '../lib/match';
+import type { ApiPlayer } from '../lib/api';
 import { cmToFeetInches, kgToLbsLabel } from '../lib/units';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
@@ -11,25 +10,14 @@ import { SpecRow } from './SpecRow';
 import { StatBlock } from './StatBlock';
 
 type PlayerCardProps = {
-  player: Player;
-  match: MatchResult;
+  player: ApiPlayer;
   invited: boolean;
-  messaged: boolean;
   onInvite: () => void;
-  onMessage: () => void;
   onPress: () => void;
 };
 
-/** Talent-feed card: identity, physicals, mini stats, fit chip, Invite/Message. */
-export function PlayerCard({
-  player,
-  match,
-  invited,
-  messaged,
-  onInvite,
-  onMessage,
-  onPress,
-}: PlayerCardProps) {
+/** Talent-feed card: identity, physicals, mini stats, server-scored fit, Invite. */
+export function PlayerCard({ player, invited, onInvite, onPress }: PlayerCardProps) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
       <Card className="mb-3">
@@ -66,26 +54,22 @@ export function PlayerCard({
           <StatBlock size="sm" value={`${Math.round(player.fg_pct)}%`} label="FG%" />
         </View>
 
-        <View className="mt-3">
-          <MatchChip score={match.score} tier={match.tier} reason={match.reason} />
-        </View>
+        {player.match ? (
+          <View className="mt-3">
+            <MatchChip
+              score={player.match.score}
+              tier={player.match.tier}
+              reason={player.match.reason}
+            />
+          </View>
+        ) : null}
 
-        <View className="mt-3 flex-row border-t border-border pt-3">
-          <Button
-            label="Message"
-            doneLabel="Messaged"
-            done={messaged}
-            variant="secondary"
-            onPress={onMessage}
-            className="flex-1"
-          />
-          <View className="w-2.5" />
+        <View className="mt-3 border-t border-border pt-3">
           <Button
             label="Invite"
             doneLabel="Invited"
             done={invited}
             onPress={onInvite}
-            className="flex-1"
           />
         </View>
       </Card>

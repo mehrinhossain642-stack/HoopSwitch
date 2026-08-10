@@ -1,115 +1,149 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '../components/Card';
-import { useApp } from '../lib/store';
-import { COLORS } from '../lib/theme';
-import { getProfile, login } from '../lib/api';
-/** Role select — the prototype's stand-in for auth. */
-export default function RoleSelect() {
-  const { currentPlayer, currentTeam, allPostings } = useApp();
-  const openSlots = allPostings.filter((posting) => posting.status === 'open').length;
-  async function testBackendLogin() {
-  try {
-    const token = await login(
-      'marcus.webb@example.com',
-      'password123'
-    );
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import {
+  Image,
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSession } from '../lib/session';
 
-    console.log('Frontend connected to backend!');
-    console.log(token);
+export default function SplashScreen() {
+  const { user, restoring } = useSession();
 
-    const profile = await getProfile(token);
+  // A stored session should skip the sign-in gate entirely — otherwise
+  // persisting the JWT buys nothing and every cold start asks for a password.
+  useEffect(() => {
+    if (restoring || !user) return;
+    router.replace(user.role === 'coach' ? '/coach' : '/player');
+  }, [restoring, user]);
 
-    console.log('Profile loaded from backend!');
-    console.log(profile);
-  } catch (error) {
-    console.error('Frontend/backend connection failed:', error);
-  }
-}
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
-      <View className="flex-1 justify-between px-5 py-8">
-        <View>
-          <Text className="font-display text-[34px] leading-[40px] text-ink">
-            Hoop<Text className="text-primary">Switch</Text>
-          </Text>
-          <Text className="font-sans mt-3 text-[15px] leading-[22px] text-slate">
-            The transfer portal for everyone. Find the roster spot that actually fits — or
-            the player who fills yours.
-          </Text>
-        </View>
+    <View className="flex-1 items-center justify-center bg-black">
+      {/* Exact Figma frame: 300 x 650 */}
+      <View
+        style={{
+          width: 300,
+          height: 650,
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <ImageBackground
+          source={require('../assets/splash-bg.png')}
+          resizeMode="cover"
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          {/* Dark overlay */}
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: 'rgba(0,0,0,0.50)',
+              },
+            ]}
+          />
 
-        <View>
-          <Text className="font-sans-semibold mb-3 text-[12px] uppercase tracking-widest text-slate">
-            Choose a view
-          </Text>
-          <Pressable
-            onPress={testBackendLogin}
-            className="mb-4 rounded-btn bg-primary px-4 py-3"
+          {/* Main content */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 145,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+            }}
           >
-            <Text className="font-sans-semibold text-center text-white">
-              Test Backend Connection
+            {/* Basketball icon */}
+            <Image
+              source={require('../assets/hoopswitch-icon.png')}
+              resizeMode="contain"
+              style={{
+                width: 62,
+                height: 62,
+              }}
+            />
+
+            {/* Orange line */}
+            <View
+              style={{
+                width: 43,
+                height: 4,
+                borderRadius: 20,
+                backgroundColor: '#FA4B21',
+                marginTop: 18,
+              }}
+            />
+
+            {/* HOOPSWITCH */}
+            <Text
+              style={{
+                marginTop: 17,
+                fontSize: 27,
+                lineHeight: 33,
+                fontWeight: '900',
+                color: '#FFFFFF',
+                letterSpacing: 0.3,
+              }}
+            >
+              HOOPSWITCH
             </Text>
-          </Pressable>
-          <RoleCard
-            href="/player"
-            icon="basketball-outline"
-            title="Enter as Player"
-            subtitle={`${allPostings.length} open roster spots · scored against your profile`}
-            meta={`Signed in as ${currentPlayer.name} · ${currentPlayer.position} · ${currentPlayer.location}`}
-          />
 
-          <View className="h-3" />
+            {/* Tagline */}
+            <Text
+              style={{
+                marginTop: 12,
+                fontSize: 13,
+                lineHeight: 19,
+                fontWeight: '700',
+                color: '#FFFFFF',
+                textAlign: 'center',
+              }}
+            >
+              Connect. Compete. Get{'\n'}Recruited.
+            </Text>
 
-          <RoleCard
-            href="/coach"
-            icon="clipboard-outline"
-            title="Enter as Coach"
-            subtitle={`${openSlots} open slots · ranked talent for each one`}
-            meta={`Signed in as ${currentTeam.coach_name} · ${currentTeam.name}`}
-          />
-        </View>
-
-        <Text className="font-sans text-center text-[12px] text-slate">
-          Prototype · dummy data, no accounts, nothing leaves your device
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-type RoleCardProps = {
-  href: '/player' | '/coach';
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  meta: string;
-};
-
-function RoleCard({ href, icon, title, subtitle, meta }: RoleCardProps) {
-  return (
-    <Link href={href} asChild>
-      <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-        <Card>
-          <View className="flex-row items-center">
-            <View className="h-12 w-12 items-center justify-center rounded-btn bg-primary">
-              <Ionicons name={icon} size={24} color={COLORS.surface} />
-            </View>
-            <View className="ml-4 flex-1">
-              <Text className="font-display text-[19px] text-ink">{title}</Text>
-              <Text className="font-sans mt-0.5 text-[13px] leading-[18px] text-slate">
-                {subtitle}
+            {/* Get Started */}
+            <Pressable
+              onPress={() => router.push('/auth/welcome')}
+              style={({ pressed }) => ({
+                marginTop: 26,
+                height: 48,
+                paddingHorizontal: 22,
+                borderRadius: 10,
+                backgroundColor: '#FA4B21',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 14,
+                  fontWeight: '700',
+                }}
+              >
+                Get Started
               </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.slate} />
+
+              <Ionicons
+                name="arrow-forward"
+                size={17}
+                color="white"
+                style={{ marginLeft: 8 }}
+              />
+            </Pressable>
           </View>
-          <View className="mt-3 border-t border-border pt-3">
-            <Text className="font-sans-medium text-[12px] text-slate">{meta}</Text>
-          </View>
-        </Card>
-      </Pressable>
-    </Link>
+        </ImageBackground>
+      </View>
+    </View>
   );
 }
