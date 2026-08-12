@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { COLORS } from '../lib/theme';
+import { Touchable } from './Touchable';
 
 type EditableFieldProps = {
   label: string;
@@ -20,11 +21,14 @@ type EditableFieldProps = {
   multiline?: boolean;
   /** Hides the bottom hairline for the last row in a card. */
   last?: boolean;
+  /** Message shown when a commit is rejected. */
+  hint?: string;
 };
 
 /**
- * Labeled row with a pencil affordance that swaps into an input. Commits flow
- * straight into in-memory state, so feeds re-score on the next render.
+ * Labeled row that swaps into an input in place. Rows are 48px tall so the whole
+ * row is a comfortable target, and the value carries a visible pencil rather
+ * than relying on users guessing that text is tappable.
  */
 export function EditableField({
   label,
@@ -35,6 +39,7 @@ export function EditableField({
   options,
   multiline = false,
   last = false,
+  hint,
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(editSeed ?? value);
@@ -61,37 +66,55 @@ export function EditableField({
 
   const rowBorder = last ? '' : 'border-b border-border';
 
+  const rejectionNotice = rejected ? (
+    <Text
+      className="font-sans mt-1 text-[11px] text-danger"
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite">
+      {hint ?? "Couldn't read that value — reverted."}
+    </Text>
+  ) : null;
+
   if (options) {
     return (
-      <View className={`py-3 ${rowBorder}`}>
-        <Pressable
-          className="flex-row items-center justify-between"
-          onPress={() => setEditing((prev) => !prev)}>
+      <View className={`py-2 ${rowBorder}`}>
+        <Touchable
+          onPress={() => setEditing((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${value}. Change`}
+          accessibilityState={{ expanded: editing }}
+          scaleTo={1}
+          dimTo={0.65}
+          className="h-11 flex-row items-center justify-between">
           <Text className="font-sans text-[14px] text-slate">{label}</Text>
           <View className="flex-row items-center">
             <Text className="font-sans-semibold text-[14px] text-ink">{value}</Text>
             <Ionicons
-              name={editing ? 'chevron-up' : 'pencil'}
-              size={14}
+              name={editing ? 'chevron-up' : 'chevron-down'}
+              size={15}
               color={COLORS.slate}
               style={{ marginLeft: 8 }}
             />
           </View>
-        </Pressable>
+        </Touchable>
 
         {editing ? (
-          <View className="mt-3 flex-row flex-wrap gap-2">
+          <View className="mb-1.5 mt-1 flex-row flex-wrap gap-2">
             {options.map((option) => {
               const active = option === value;
               return (
-                <Pressable
+                <Touchable
                   key={option}
                   onPress={() => {
                     onCommit(option);
                     setEditing(false);
                   }}
-                  className={`rounded-full border px-3 py-1.5 ${
-                    active ? 'border-primary bg-primary' : 'border-border bg-bg'
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={option}
+                  scaleTo={0.95}
+                  className={`h-9 justify-center rounded-full px-3.5 ${
+                    active ? 'bg-primary' : 'border border-border-strong bg-surface'
                   }`}>
                   <Text
                     className={`font-sans-semibold text-[13px] ${
@@ -99,11 +122,13 @@ export function EditableField({
                     }`}>
                     {option}
                   </Text>
-                </Pressable>
+                </Touchable>
               );
             })}
           </View>
         ) : null}
+
+        {rejectionNotice}
       </View>
     );
   }
@@ -112,17 +137,23 @@ export function EditableField({
     return (
       <View>
         <View className="flex-row items-center justify-between">
-          <Text className="font-sans-semibold text-[13px] uppercase tracking-wider text-slate">
-            {label}
+          <Text className="font-stat text-[15px] tracking-eyebrow text-slate">
+            {label.toUpperCase()}
           </Text>
-          <Pressable onPress={editing ? commit : beginEdit} hitSlop={10}>
+          <Touchable
+            onPress={editing ? commit : beginEdit}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={editing ? `Save ${label}` : `Edit ${label}`}
+            className="h-8 w-8 items-center justify-center rounded-full bg-mist">
             <Ionicons
               name={editing ? 'checkmark' : 'pencil'}
-              size={16}
+              size={15}
               color={editing ? COLORS.primary : COLORS.slate}
             />
-          </Pressable>
+          </Touchable>
         </View>
+
         {editing ? (
           <TextInput
             ref={inputRef}
@@ -131,19 +162,23 @@ export function EditableField({
             value={draft}
             onChangeText={setDraft}
             onBlur={commit}
-            className="font-sans mt-2 rounded-btn border border-primary bg-bg px-3 py-2 text-[14px] leading-5 text-ink"
-            style={{ minHeight: 96, textAlignVertical: 'top' }}
+            className="font-sans mt-2.5 rounded-btn border-2 border-primary bg-surface px-3 py-2.5 text-[14px] leading-[20px] text-ink"
+            style={{ minHeight: 104, textAlignVertical: 'top' }}
           />
         ) : (
-          <Text className="font-sans mt-2 text-[14px] leading-5 text-slate">{value}</Text>
+          <Text className="font-sans mt-2 text-[14px] leading-[21px] text-slate">
+            {value.length > 0 ? value : 'Nothing written yet — tap the pencil to add.'}
+          </Text>
         )}
+
+        {rejectionNotice}
       </View>
     );
   }
 
   return (
-    <View className={`py-3 ${rowBorder}`}>
-      <View className="flex-row items-center justify-between">
+    <View className={`py-2 ${rowBorder}`}>
+      <View className="h-11 flex-row items-center justify-between">
         <Text className="font-sans text-[14px] text-slate">{label}</Text>
 
         {editing ? (
@@ -157,30 +192,34 @@ export function EditableField({
               onSubmitEditing={commit}
               returnKeyType="done"
               keyboardType={keyboardType}
-              className="font-sans-semibold min-w-[88px] rounded-md border border-primary bg-bg px-2 py-1 text-right text-[14px] text-ink"
+              accessibilityLabel={label}
+              className="font-sans-semibold h-9 min-w-[92px] rounded-md border-2 border-primary bg-surface px-2 text-right text-[14px] text-ink"
             />
-            <Pressable onPress={commit} hitSlop={10}>
-              <Ionicons
-                name="checkmark"
-                size={16}
-                color={COLORS.primary}
-                style={{ marginLeft: 8 }}
-              />
-            </Pressable>
+            <Touchable
+              onPress={commit}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={`Save ${label}`}
+              className="ml-2 h-8 w-8 items-center justify-center rounded-full bg-primary-soft">
+              <Ionicons name="checkmark" size={15} color={COLORS.primary} />
+            </Touchable>
           </View>
         ) : (
-          <Pressable className="flex-row items-center" onPress={beginEdit} hitSlop={8}>
+          <Touchable
+            onPress={beginEdit}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${value}. Edit`}
+            scaleTo={1}
+            dimTo={0.6}
+            className="flex-row items-center">
             <Text className="font-sans-semibold text-[14px] text-ink">{value}</Text>
             <Ionicons name="pencil" size={14} color={COLORS.slate} style={{ marginLeft: 8 }} />
-          </Pressable>
+          </Touchable>
         )}
       </View>
 
-      {rejected ? (
-        <Text className="font-sans mt-1 text-[11px] text-primary">
-          Couldn&apos;t read that value — reverted.
-        </Text>
-      ) : null}
+      {rejectionNotice}
     </View>
   );
 }

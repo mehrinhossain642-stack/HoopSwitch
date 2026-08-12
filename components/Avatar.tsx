@@ -3,17 +3,25 @@ import { Text, View } from 'react-native';
 type AvatarProps = {
   name: string;
   size?: number;
-  /** `square` is used for team logos, `round` for people. */
+  /** `square` for team crests, `round` for people. */
   shape?: 'round' | 'square';
+  /** Adds a light ring — for avatars sitting on an ink surface. */
+  ring?: boolean;
 };
 
+/**
+ * Jersey-adjacent palette: deep, saturated colours that hold white text at
+ * 4.5:1 and don't compete with brand orange.
+ */
 const PALETTE = [
-  '#2C3E7B',
-  '#8A3B2E',
-  '#1F6B52',
-  '#5B3B7B',
-  '#8A6A1F',
-  '#2E5F73',
+  '#1E3A6E',
+  '#8A2B23',
+  '#155E45',
+  '#4A2C6B',
+  '#7A5410',
+  '#1F4E5F',
+  '#5B2350',
+  '#2C4A22',
 ] as const;
 
 function initialsOf(name: string): string {
@@ -21,7 +29,7 @@ function initialsOf(name: string): string {
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 
-/** Deterministic color per name so avatars stay stable across renders. */
+/** Deterministic colour per name so avatars stay stable across renders. */
 function colorFor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
@@ -30,20 +38,22 @@ function colorFor(name: string): string {
   return PALETTE[hash % PALETTE.length] ?? PALETTE[0];
 }
 
-/** Initials-based avatar — no image hosting anywhere in the prototype. */
-export function Avatar({ name, size = 44, shape = 'round' }: AvatarProps) {
+/** Initials monogram — no image hosting anywhere in the app yet. */
+export function Avatar({ name, size = 44, shape = 'round', ring = false }: AvatarProps) {
   return (
     <View
       className="items-center justify-center"
+      accessibilityLabel={name}
       style={{
         width: size,
         height: size,
-        borderRadius: shape === 'round' ? size / 2 : size * 0.24,
+        borderRadius: shape === 'round' ? size / 2 : Math.max(8, size * 0.2),
         backgroundColor: colorFor(name),
+        ...(ring ? { borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)' } : {}),
       }}>
       <Text
-        className="font-display text-surface"
-        style={{ fontSize: size * 0.38, lineHeight: size * 0.46 }}>
+        className="font-stat text-surface"
+        style={{ fontSize: size * 0.44, lineHeight: size * 0.5, letterSpacing: 0.5 }}>
         {initialsOf(name)}
       </Text>
     </View>

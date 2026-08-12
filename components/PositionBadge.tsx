@@ -1,21 +1,54 @@
 import { Text, View } from 'react-native';
 import type { Position } from '../data/types';
 
-type PositionBadgeProps = {
-  position: Position;
-  /** `dark` inverts to the ink-filled treatment used on hero rows. */
-  variant?: 'default' | 'dark';
+type Tone = 'default' | 'dark' | 'primary' | 'onDark';
+type Size = 'sm' | 'md' | 'lg';
+
+const FILL: Record<Tone, string> = {
+  default: 'bg-mist',
+  dark: 'bg-ink',
+  primary: 'bg-primary',
+  onDark: 'bg-ink-700',
 };
 
-/** Small PG/SG/SF/PF/C pill. */
-export function PositionBadge({ position, variant = 'default' }: PositionBadgeProps) {
-  const isDark = variant === 'dark';
+const LABEL: Record<Tone, string> = {
+  default: 'text-ink',
+  dark: 'text-surface',
+  primary: 'text-surface',
+  onDark: 'text-surface',
+};
+
+const BOX: Record<Size, string> = {
+  sm: 'h-[22px] min-w-[28px] px-1.5',
+  md: 'h-[26px] min-w-[34px] px-2',
+  lg: 'h-[34px] min-w-[44px] px-2.5',
+};
+
+const TEXT: Record<Size, string> = {
+  sm: 'text-[14px]',
+  md: 'text-[16px]',
+  lg: 'text-[21px]',
+};
+
+/**
+ * PG/SG/SF/PF/C badge. Set in the condensed face — position codes are the most
+ * repeated token in the app, and the squared-off numerals-style treatment is
+ * what makes them read as roster shorthand rather than generic tags.
+ */
+export function PositionBadge({
+  position,
+  tone = 'default',
+  size = 'md',
+}: {
+  position: Position;
+  tone?: Tone;
+  size?: Size;
+}) {
   return (
-    <View className={`rounded-md px-1.5 py-0.5 ${isDark ? 'bg-ink' : 'bg-bg border border-border'}`}>
-      <Text
-        className={`font-sans-bold text-[11px] tracking-wide ${isDark ? 'text-surface' : 'text-slate'}`}>
-        {position}
-      </Text>
+    <View
+      className={`items-center justify-center rounded-badge ${FILL[tone]} ${BOX[size]}`}
+      accessibilityLabel={`Position ${position}`}>
+      <Text className={`font-stat tracking-stat ${LABEL[tone]} ${TEXT[size]}`}>{position}</Text>
     </View>
   );
 }

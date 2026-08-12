@@ -1,11 +1,15 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { AppHeader } from '../../../components/AppHeader';
+import { Button } from '../../../components/Button';
 import { Chip } from '../../../components/Chip';
 import { PostingCard } from '../../../components/PostingCard';
-import { InlineError, ScreenError, ScreenLoading } from '../../../components/ScreenState';
+import { Screen, useContentContainerStyle } from '../../../components/Screen';
+import { EmptyState, InlineError, ScreenError } from '../../../components/ScreenState';
+import { SearchField } from '../../../components/SearchField';
+import { FeedSkeleton } from '../../../components/Skeleton';
+import { Reveal } from '../../../components/Touchable';
 import * as api from '../../../lib/api';
 import type { ApiPosting } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
@@ -21,6 +25,7 @@ type FilterKey = 'position' | 'level' | 'location';
 export default function PlayerHome() {
   const router = useRouter();
   const { requireToken, token } = useSession();
+  const contentStyle = useContentContainerStyle();
 
   const feed = useApiData(() => api.getPostingFeed(requireToken()), [token]);
   const profile = useApiData(() => api.getProfile(requireToken()), [token]);
@@ -91,19 +96,87 @@ export default function PlayerHome() {
     [postings, feed, requireToken, pendingId]
   );
 
-  if (feed.loading && !feed.data) return <ScreenLoading label="Loading roster spots" />;
   if (feed.error && !feed.data) {
     return <ScreenError message={feed.error} onRetry={feed.refetch} />;
   }
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+  const loadingFirst = feed.loading && !feed.data;
+
+  const header = (
+    <AppHeader
+      brand
+      meta={
+        loadingFirst
+          ? 'Loading openings'
+          : `${visible.length} ${visible.length === 1 ? 'spot' : 'spots'} · best fit first`
+      }>
+      <SearchField
+        onDark
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search teams, roles, cities"
+      />
+
+      {/* Chips are the filter UI — there's no separate filter button to hunt for. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        className="mt-3"
+        contentContainerStyle={{ paddingRight: 4 }}>
+        <Chip
+          onDark
+          label={`My position · ${playerPosition}`}
+          icon="basketball-outline"
+          active={filters.position}
+          onPress={() => toggleFilter('position')}
+        />
+        <Chip
+          onDark
+          label="U SPORTS"
+          icon="trophy-outline"
+          active={filters.level}
+          onPress={() => toggleFilter('level')}
+        />
+        <Chip
+          onDark
+          label="Ontario"
+          icon="location-outline"
+          active={filters.location}
+          onPress={() => toggleFilter('location')}
+        />
+        {activeFilters > 0 ? (
+          <Chip
+            onDark
+            label="Reset"
+            icon="close"
+            onPress={() => setFilters({ position: false, level: false, location: false })}
+          />
+        ) : null}
+      </ScrollView>
+    </AppHeader>
+  );
+
+  if (loadingFirst) {
+    return (
+      <Screen edges={[]}>
+        {header}
+        <ScrollView contentContainerStyle={{ ...contentStyle, paddingTop: 16 }}>
+          <FeedSkeleton />
+        </ScrollView>
+      </Screen>
+    );
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
+    <Screen edges={[]}>
+      {header}
+
       <FlatList
         data={visible}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+        contentContainerStyle={{ ...contentStyle, paddingTop: 16 }}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
@@ -113,89 +186,46 @@ export default function PlayerHome() {
           />
         }
         ListHeaderComponent={
-          <View className="pb-1 pt-2">
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-display text-[24px] text-ink">
-                Hoop<Text className="text-primary">Switch</Text>
-              </Text>
-              <View className="flex-row items-center">
-                <Ionicons name="options-outline" size={20} color={COLORS.ink} />
-                {activeFilterCount > 0 ? (
-                  <View className="ml-1.5 h-5 w-5 items-center justify-center rounded-full bg-primary">
-                    <Text className="font-sans-bold text-[11px] text-surface">
-                      {activeFilterCount}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-
-            <View className="mb-3 flex-row items-center rounded-btn border border-border bg-surface px-3">
-              <Ionicons name="search" size={16} color={COLORS.slate} />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search open roster spots..."
-                placeholderTextColor={COLORS.slate}
-                returnKeyType="search"
-                className="font-sans h-11 flex-1 px-2 text-[14px] text-ink"
-              />
-              {query.length > 0 ? (
-                <Ionicons
-                  name="close-circle"
-                  size={16}
-                  color={COLORS.slate}
-                  onPress={() => setQuery('')}
-                />
-              ) : null}
-            </View>
-
-            <View className="mb-4 flex-row">
-              <Chip
-                label={playerPosition}
-                icon="basketball-outline"
-                active={filters.position}
-                onPress={() => toggleFilter('position')}
-              />
-              <Chip
-                label="U SPORTS"
-                icon="trophy-outline"
-                active={filters.level}
-                onPress={() => toggleFilter('level')}
-              />
-              <Chip
-                label="Ontario"
-                icon="location-outline"
-                active={filters.location}
-                onPress={() => toggleFilter('location')}
-              />
-            </View>
-
-            {applyError ? <InlineError message={applyError} /> : null}
-
-            <Text className="font-sans-semibold mb-3 text-[12px] uppercase tracking-widest text-slate">
-              {visible.length} {visible.length === 1 ? 'spot' : 'spots'} · best fit first
-            </Text>
-          </View>
+          applyError ? (
+            <InlineError message={applyError} onRetry={() => setApplyError(null)} />
+          ) : null
         }
-        renderItem={({ item }) => (
-          <PostingCard
-            posting={item}
-            applied={item.connected === true}
-            onApply={() => apply(item)}
-            onPress={() => router.push(`/player/posting/${item.id}`)}
-          />
+        renderItem={({ item, index }) => (
+          <Reveal index={index}>
+            <PostingCard
+              posting={item}
+              applied={item.connected === true}
+              pending={pendingId === item.id}
+              onApply={() => apply(item)}
+              onPress={() => router.push(`/player/posting/${item.id}`)}
+            />
+          </Reveal>
         )}
         ListEmptyComponent={
-          <View className="items-center rounded-card border border-dashed border-border bg-surface px-6 py-10">
-            <Ionicons name="search-outline" size={24} color={COLORS.slate} />
-            <Text className="font-display mt-3 text-[16px] text-ink">No roster spots match</Text>
-            <Text className="font-sans mt-1 text-center text-[13px] leading-[18px] text-slate">
-              Clear a filter or try a different search to see more openings.
-            </Text>
-          </View>
+          <EmptyState
+            icon="search-outline"
+            title="No roster spots match"
+            body={
+              activeFilters > 0
+                ? 'Your filters are narrowing this down to nothing. Clear one to see more openings.'
+                : 'Nothing matches that search yet. Try a team name, a city, or a position.'
+            }
+            action={
+              activeFilters > 0 ? (
+                <Button
+                  label="Clear filters"
+                  variant="secondary"
+                  size="sm"
+                  fullWidth={false}
+                  onPress={() =>
+                    setFilters({ position: false, level: false, location: false })
+                  }
+                />
+              ) : null
+            }
+          />
         }
       />
-    </SafeAreaView>
+    </Screen>
   );
 }

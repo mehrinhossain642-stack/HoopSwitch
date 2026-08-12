@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, Text, View } from 'react-native';
 import { COLORS } from '../../lib/theme';
+import { Sheet, SheetRow } from '../Sheet';
+import { Touchable } from '../Touchable';
 import { Label } from './FormField';
 
 type SelectFieldProps<T extends string | number> = {
@@ -21,8 +22,8 @@ type SelectFieldProps<T extends string | number> = {
 
 /**
  * Dropdown-style picker. React Native has no cross-platform native select, so
- * this is a button that opens a bottom sheet of options — which also matches
- * the mock's "Select year ▾" affordance better than a wheel picker would.
+ * this is a trigger styled like a text field that opens a bottom sheet — which
+ * keeps the field's height stable instead of pushing the form around.
  */
 export function SelectField<T extends string | number>({
   label,
@@ -38,74 +39,72 @@ export function SelectField<T extends string | number>({
 }: SelectFieldProps<T>) {
   const [open, setOpen] = useState(false);
 
+  const border = error ? 'border-danger' : open ? 'border-primary' : 'border-border-strong';
+
   return (
     <View className="mb-4 flex-1">
       <Label label={label} optional={optional} required={required} />
 
-      <Pressable
+      <Touchable
         onPress={() => setOpen(true)}
-        className={`mt-2 h-12 flex-row items-center rounded-btn border bg-surface px-3 ${
-          error ? 'border-primary' : 'border-border'
-        }`}
-        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-        {icon ? <Ionicons name={icon} size={16} color={COLORS.slate} /> : null}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${value === null ? placeholder : labelFor(value)}`}
+        accessibilityState={{ expanded: open }}
+        scaleTo={1}
+        dimTo={0.7}
+        className={`mt-2 h-12 flex-row items-center rounded-btn border bg-surface px-3.5 ${border}`}
+        style={{ borderWidth: open || error ? 2 : 1 }}>
+        {icon ? (
+          <Ionicons
+            name={icon}
+            size={17}
+            color={open ? COLORS.primary : COLORS.slate}
+            style={{ marginRight: 9 }}
+          />
+        ) : null}
+
         <Text
-          className={`font-sans flex-1 text-[14px] ${icon ? 'px-2' : ''} ${
-            value === null ? 'text-slate' : 'text-ink'
+          className={`font-sans flex-1 text-[15px] ${
+            value === null ? 'text-slate-soft' : 'text-ink'
           }`}
           numberOfLines={1}>
           {value === null ? placeholder : labelFor(value)}
         </Text>
-        <Ionicons name="chevron-down" size={16} color={COLORS.slate} />
-      </Pressable>
 
-      {error ? <Text className="font-sans mt-1 text-[11px] text-primary">{error}</Text> : null}
+        <Ionicons name="chevron-down" size={17} color={COLORS.slate} />
+      </Touchable>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable
-          className="flex-1 justify-end"
-          style={{ backgroundColor: 'rgba(20,21,24,0.45)' }}
-          onPress={() => setOpen(false)}>
-          {/* Stop taps inside the sheet from dismissing it. */}
-          <Pressable onPress={() => {}} className="max-h-[70%] rounded-t-3xl bg-surface">
-            <SafeAreaView edges={['bottom']}>
-              <View className="flex-row items-center justify-between border-b border-border px-5 py-4">
-                <Text className="font-display text-[17px] text-ink">{label}</Text>
-                <Pressable onPress={() => setOpen(false)} hitSlop={10}>
-                  <Ionicons name="close" size={20} color={COLORS.slate} />
-                </Pressable>
-              </View>
+      {error ? (
+        <Text
+          className="font-sans mt-1.5 text-[12px] text-danger"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
 
-              <FlatList
-                data={options as T[]}
-                keyExtractor={(item) => String(item)}
-                renderItem={({ item }) => {
-                  const active = item === value;
-                  return (
-                    <Pressable
-                      onPress={() => {
-                        onSelect(item);
-                        setOpen(false);
-                      }}
-                      className="flex-row items-center justify-between border-b border-border px-5 py-4"
-                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-                      <Text
-                        className={`text-[15px] ${
-                          active ? 'font-sans-bold text-primary' : 'font-sans text-ink'
-                        }`}>
-                        {labelFor(item)}
-                      </Text>
-                      {active ? (
-                        <Ionicons name="checkmark" size={18} color={COLORS.primary} />
-                      ) : null}
-                    </Pressable>
-                  );
-                }}
-              />
-            </SafeAreaView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Sheet visible={open} onClose={() => setOpen(false)} title={label}>
+        <ScrollView>
+          {options.map((option, index) => (
+            <SheetRow
+              key={String(option)}
+              active={option === value}
+              last={index === options.length - 1}
+              accessibilityLabel={labelFor(option)}
+              onPress={() => {
+                onSelect(option);
+                setOpen(false);
+              }}>
+              <Text
+                className={`text-[15px] ${
+                  option === value ? 'font-sans-bold text-primary' : 'font-sans text-ink'
+                }`}>
+                {labelFor(option)}
+              </Text>
+            </SheetRow>
+          ))}
+        </ScrollView>
+      </Sheet>
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import type { PostingStatus } from '../data/types';
+import { COLORS } from '../lib/theme';
 
 const STATUS_LABEL: Record<PostingStatus, string> = {
   open: 'Open',
@@ -7,17 +8,31 @@ const STATUS_LABEL: Record<PostingStatus, string> = {
   closed: 'Closed',
 };
 
-const STATUS_STYLE: Record<PostingStatus, { text: string; bg: string }> = {
-  open: { text: 'text-good', bg: 'rgba(31,169,113,0.12)' },
-  in_review: { text: 'text-partial', bg: 'rgba(232,163,61,0.14)' },
-  closed: { text: 'text-slate', bg: 'rgba(91,97,110,0.12)' },
+const STATUS_COLOR: Record<PostingStatus, { fg: string; bg: string }> = {
+  open: { fg: COLORS.good, bg: COLORS.goodSoft },
+  in_review: { fg: COLORS.partial, bg: COLORS.partialSoft },
+  closed: { fg: COLORS.slate, bg: COLORS.mist },
 };
 
-export function StatusPill({ status }: { status: PostingStatus }) {
-  const style = STATUS_STYLE[status];
+/**
+ * Posting status. Carries a dot as well as colour so the state doesn't depend
+ * on distinguishing green from amber.
+ */
+export function StatusPill({ status, onDark = false }: { status: PostingStatus; onDark?: boolean }) {
+  const { fg, bg } = STATUS_COLOR[status];
+
   return (
-    <View className="rounded-full px-2 py-1" style={{ backgroundColor: style.bg }}>
-      <Text className={`font-sans-bold text-[10px] tracking-wider ${style.text}`}>
+    <View
+      className="flex-row items-center rounded-full px-2 py-1"
+      style={{ backgroundColor: onDark ? 'rgba(255,255,255,0.10)' : bg }}
+      accessibilityLabel={`Status: ${STATUS_LABEL[status]}`}>
+      <View
+        className="mr-1.5 h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: onDark ? COLORS.surface : fg }}
+      />
+      <Text
+        className="font-stat text-[12px] tracking-eyebrow"
+        style={{ color: onDark ? COLORS.surface : fg }}>
         {STATUS_LABEL[status].toUpperCase()}
       </Text>
     </View>
@@ -25,20 +40,25 @@ export function StatusPill({ status }: { status: PostingStatus }) {
 }
 
 type DotPillProps = {
-  label: string;
-  tone?: 'primary' | 'slate';
+  label: string
+  tone?: 'primary' | 'slate' | 'onDark';
 };
 
-/** Leading-dot pill used for "Free Agent" and "Recruiting — N open slots". */
+/** Leading-dot pill used for "Free agent" and "Recruiting — N open slots". */
 export function DotPill({ label, tone = 'primary' }: DotPillProps) {
-  const isPrimary = tone === 'primary';
+  const palette =
+    tone === 'primary'
+      ? { fg: COLORS.primary, bg: COLORS.primarySoft }
+      : tone === 'onDark'
+        ? { fg: COLORS.surface, bg: 'rgba(255,255,255,0.12)' }
+        : { fg: COLORS.slate, bg: COLORS.mist };
+
   return (
     <View
-      className="flex-row items-center self-center rounded-full px-3 py-1.5"
-      style={{ backgroundColor: isPrimary ? 'rgba(240,78,35,0.10)' : 'rgba(91,97,110,0.10)' }}>
-      <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${isPrimary ? 'bg-primary' : 'bg-slate'}`} />
-      <Text
-        className={`font-sans-bold text-[11px] tracking-wider ${isPrimary ? 'text-primary' : 'text-slate'}`}>
+      className="flex-row items-center self-start rounded-full px-2.5 py-1.5"
+      style={{ backgroundColor: palette.bg }}>
+      <View className="mr-2 h-[6px] w-[6px] rounded-full" style={{ backgroundColor: palette.fg }} />
+      <Text className="font-stat text-[13px] tracking-eyebrow" style={{ color: palette.fg }}>
         {label.toUpperCase()}
       </Text>
     </View>

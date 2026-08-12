@@ -1,23 +1,30 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar } from '../../../components/Avatar';
 import { Card } from '../../../components/Card';
 import { CareerStatsTable } from '../../../components/CareerStatsTable';
 import { EditableField } from '../../../components/EditableField';
 import { AddHighlightTile, HighlightCard } from '../../../components/HighlightCard';
 import { PositionBadge } from '../../../components/PositionBadge';
+import { ProfileHero } from '../../../components/ProfileHero';
+import { Screen, useContentContainerStyle } from '../../../components/Screen';
 import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
-import { StatBlock } from '../../../components/StatBlock';
 import { DotPill } from '../../../components/StatusPill';
 import { SwitchRoleButton } from '../../../components/SwitchRoleButton';
+import { useLayout } from '../../../lib/layout';
 import type { DominantHand, Position } from '../../../data/types';
 import * as api from '../../../lib/api';
 import type { ApiPlayer, ProfilePatch } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
+import { COLORS } from '../../../lib/theme';
 import { useApiData } from '../../../lib/useApi';
-import { cmToFeetInches, kgToLbsLabel, parseHeightToCm, parseLbsToKg } from '../../../lib/units';
+import {
+  cmToFeetInches,
+  kgToLbsLabel,
+  parseHeightToCm,
+  parseLbsToKg,
+} from '../../../lib/units';
 
 const POSITIONS: readonly Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 const HANDS: readonly DominantHand[] = ['Left', 'Right', 'Ambidextrous'];
@@ -28,6 +35,8 @@ const HANDS: readonly DominantHand[] = ['Left', 'Right', 'Ambidextrous'];
  */
 export default function PlayerProfile() {
   const { requireToken, token } = useSession();
+  const contentStyle = useContentContainerStyle();
+  const { gutter } = useLayout();
 
   const profile = useApiData<ApiPlayer>(() => api.getProfile(requireToken()), [token]);
   const connections = useApiData(() => api.listConnections(requireToken()), [token]);
@@ -54,53 +63,50 @@ export default function PlayerProfile() {
   if (!player) return <ScreenError message="Profile unavailable" onRetry={refetch} />;
 
   const applicationCount = connections.data?.connections.length ?? 0;
+  const eligibility = `${player.eligibility_years} yr${player.eligibility_years === 1 ? '' : 's'} eligibility`;
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
+    <Screen edges={[]}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
-        keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-center justify-between py-3">
-          <Text className="font-sans-semibold text-[12px] uppercase tracking-widest text-slate">
-            My profile
-          </Text>
-          <SwitchRoleButton />
-        </View>
+        contentContainerStyle={{ paddingBottom: 0 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <ProfileHero
+          eyebrow="My profile"
+          name={player.name}
+          meta={`${player.location} · Age ${player.age} · ${eligibility}`}
+          badge={<PositionBadge position={player.position} tone="primary" />}
+          pill={<DotPill label="Free agent" tone="onDark" />}
+          action={<SwitchRoleButton onDark />}
+          stats={[
+            { value: player.ppg.toFixed(1), label: 'PPG' },
+            { value: player.rpg.toFixed(1), label: 'RPG' },
+            { value: player.apg.toFixed(1), label: 'APG' },
+            { value: `${Math.round(player.fg_pct)}%`, label: 'FG%' },
+          ]}
+        />
 
-        {/* Hero */}
-        <Card className="items-center pb-5 pt-6">
-          <Avatar name={player.name} size={92} />
-          <View className="mt-4 flex-row items-center">
-            <Text className="font-display text-[24px] text-ink">{player.name}</Text>
-            <View className="ml-2">
-              <PositionBadge position={player.position} variant="dark" />
-            </View>
-          </View>
-          <Text className="font-sans mt-1 text-[13px] text-slate">
-            {player.location} · Age {player.age} · {player.eligibility_years} yr
-            {player.eligibility_years === 1 ? '' : 's'} eligibility
-          </Text>
-          <View className="mt-3">
-            <DotPill label="Free Agent" />
-          </View>
-
-          <View className="mt-5 w-full flex-row border-t border-border pt-4">
-            <StatBlock value={player.ppg.toFixed(1)} label="PPG" />
-            <StatBlock value={player.rpg.toFixed(1)} label="RPG" />
-            <StatBlock value={player.apg.toFixed(1)} label="APG" />
-            <StatBlock value={`${Math.round(player.fg_pct)}%`} label="FG%" />
-          </View>
-        </Card>
-
-        {/* Physical & role — edits here move the feed */}
-        <View className="mt-4">
-          <SectionTitle title="Physical & Role" className="mb-2" />
-          <Card bare className="px-4 pb-1 pt-1">
+        <View style={{ ...contentStyle, paddingTop: 20 }}>
+          {/* Physical & role — edits here move the feed. */}
+          <SectionTitle
+            title="Physical & role"
+            className="mb-2.5"
+            action={
+              <View className="flex-row items-center">
+                <Ionicons name="sync-outline" size={13} color={COLORS.primary} />
+                <Text className="font-sans-medium ml-1.5 text-[11px] text-primary">
+                  Re-scores your feed
+                </Text>
+              </View>
+            }
+          />
+          <Card bare className="px-4">
             <EditableField
               label="Height"
               value={cmToFeetInches(player.height_cm)}
               editSeed={cmToFeetInches(player.height_cm).replace(/"/g, '')}
               keyboardType="numbers-and-punctuation"
+              hint="Enter a height between 4'7&quot; and 7'10&quot;."
               onCommit={(next) => {
                 const cm = parseHeightToCm(next);
                 if (cm === null || cm < 140 || cm > 240) return false;
@@ -112,6 +118,7 @@ export default function PlayerProfile() {
               value={kgToLbsLabel(player.weight_kg)}
               editSeed={String(Math.round(player.weight_kg * 2.20462))}
               keyboardType="number-pad"
+              hint="Enter a weight in pounds between 99 and 397."
               onCommit={(next) => {
                 const kg = parseLbsToKg(next);
                 if (kg === null || kg < 45 || kg > 180) return false;
@@ -123,6 +130,7 @@ export default function PlayerProfile() {
               value={cmToFeetInches(player.wingspan_cm)}
               editSeed={cmToFeetInches(player.wingspan_cm).replace(/"/g, '')}
               keyboardType="numbers-and-punctuation"
+              hint="Enter a wingspan between 4'7&quot; and 8'6&quot;."
               onCommit={(next) => {
                 const cm = parseHeightToCm(next);
                 if (cm === null || cm < 140 || cm > 260) return false;
@@ -130,13 +138,13 @@ export default function PlayerProfile() {
               }}
             />
             <EditableField
-              label="Primary Pos."
+              label="Primary position"
               value={player.position}
               options={POSITIONS}
               onCommit={(next) => commit({ position: next as Position })}
             />
             <EditableField
-              label="Dominant Hand"
+              label="Dominant hand"
               value={player.dominant_hand}
               options={HANDS}
               onCommit={(next) => commit({ dominant_hand: next as DominantHand })}
@@ -146,6 +154,7 @@ export default function PlayerProfile() {
               value={String(player.age)}
               keyboardType="number-pad"
               last
+              hint="Enter an age between 15 and 40."
               onCommit={(next) => {
                 const age = Number(next.trim());
                 if (!Number.isFinite(age) || age < 15 || age > 40) return false;
@@ -153,53 +162,60 @@ export default function PlayerProfile() {
               }}
             />
           </Card>
-          <Text className="font-sans mt-2 px-1 text-[12px] leading-[17px] text-slate">
-            Editing height, weight or position re-scores every roster spot in your feed.
-          </Text>
         </View>
 
-        {/* Highlights */}
-        <View className="mt-5">
-          <SectionTitle title="Highlights" className="mb-3" />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 4 }}>
-            {player.highlights.map((highlight) => (
-              <HighlightCard
-                key={highlight.id}
-                highlight={{
-                  id: String(highlight.id),
-                  title: highlight.title,
-                  source_type: 'external',
-                  url: highlight.url,
-                  duration_seconds: highlight.duration_seconds ?? 0,
-                  thumbnail_url: highlight.thumbnail_url ?? '',
-                }}
-              />
-            ))}
-            <AddHighlightTile
-              onPress={() => {
-                api
-                  .addHighlight(requireToken(), {
-                    title: 'Untitled clip — tap to edit later',
-                    url: 'https://www.youtube.com/',
-                    duration_seconds: 120,
-                  })
-                  .then(refetch)
-                  .catch(refetch);
+        {/* Highlights — the reel bleeds past the gutter so the next tile is
+            visibly cut off, which is what tells you the row scrolls. */}
+        <View style={{ ...contentStyle, paddingTop: 24, paddingBottom: 0 }}>
+          <SectionTitle
+            title="Highlights"
+            action={
+              <Text className="font-stat text-[14px] tracking-eyebrow text-slate">
+                {player.highlights.length} CLIPS
+              </Text>
+            }
+          />
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-3"
+          contentContainerStyle={{ paddingHorizontal: gutter }}>
+          {player.highlights.map((highlight) => (
+            <HighlightCard
+              key={highlight.id}
+              highlight={{
+                id: String(highlight.id),
+                title: highlight.title,
+                source_type: 'external',
+                url: highlight.url,
+                duration_seconds: highlight.duration_seconds ?? 0,
+                thumbnail_url: highlight.thumbnail_url ?? '',
               }}
             />
-          </ScrollView>
-        </View>
+          ))}
+          <AddHighlightTile
+            onPress={() => {
+              api
+                .addHighlight(requireToken(), {
+                  title: 'Untitled clip — tap to edit later',
+                  url: 'https://www.youtube.com/',
+                  duration_seconds: 120,
+                })
+                .then(refetch)
+                .catch(refetch);
+            }}
+          />
+        </ScrollView>
 
-        {/* Bio */}
-        <View className="mt-5">
+        <View style={{ ...contentStyle, paddingTop: 24 }}>
+          <SectionTitle title="About me" className="mb-2.5" />
           <Card>
             <EditableField
-              label="About me"
+              label="Scouting summary"
               value={player.bio ?? ''}
               multiline
+              hint="Write at least a sentence so coaches have something to read."
               onCommit={(next) => {
                 const trimmed = next.trim();
                 if (trimmed.length === 0) return false;
@@ -207,11 +223,8 @@ export default function PlayerProfile() {
               }}
             />
           </Card>
-        </View>
 
-        {/* Career stats */}
-        <View className="mt-5">
-          <SectionTitle title="Career Stats" className="mb-3" />
+          <SectionTitle title="Career stats" className="mb-2.5 mt-6" />
           <Card>
             <CareerStatsTable
               stats={player.career_stats.map((stat) => ({
@@ -224,23 +237,26 @@ export default function PlayerProfile() {
               }))}
             />
           </Card>
-        </View>
 
-        {/* Applications */}
-        <View className="mt-5">
+          <SectionTitle title="Applications" className="mb-2.5 mt-6" />
           <Card>
-            <View className="flex-row items-center justify-between">
-              <Text className="font-sans-semibold text-[13px] text-ink">
-                Active applications
-              </Text>
-              <Text className="font-display text-[18px] text-primary">{applicationCount}</Text>
+            <View className="flex-row items-center">
+              <View className="h-11 w-11 items-center justify-center rounded-md bg-primary-soft">
+                <Ionicons name="paper-plane-outline" size={19} color={COLORS.primary} />
+              </View>
+              <View className="ml-3.5 flex-1">
+                <Text className="font-display text-[15px] text-ink">
+                  {applicationCount} active{' '}
+                  {applicationCount === 1 ? 'application' : 'applications'}
+                </Text>
+                <Text className="font-sans mt-0.5 text-[12px] leading-[17px] text-slate">
+                  Apply from the openings feed to track roster spots here.
+                </Text>
+              </View>
             </View>
-            <Text className="font-sans mt-1 text-[12px] leading-[17px] text-slate">
-              Apply from the Home feed to track roster spots here.
-            </Text>
           </Card>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

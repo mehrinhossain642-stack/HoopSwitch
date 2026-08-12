@@ -1,85 +1,108 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { ApiPosting } from '../lib/api';
-import { COLORS } from '../lib/theme';
-import { cmToFeetInches, kgToLbs } from '../lib/units';
+import { tierColor } from '../lib/theme';
 import { relativeTime } from '../lib/time';
+import { cmToFeetInches, kgToLbs } from '../lib/units';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
 import { Card } from './Card';
-import { MatchChip } from './MatchChip';
+import { FitScore } from './FitScore';
 import { PositionBadge } from './PositionBadge';
-import { SpecRow } from './SpecRow';
+import { SpecStrip } from './StatStrip';
 import { StatusPill } from './StatusPill';
+import { Touchable } from './Touchable';
 
 type PostingCardProps = {
   posting: ApiPosting;
   applied: boolean;
+  pending?: boolean;
   onApply: () => void;
   onPress: () => void;
 };
 
-/** Job-feed card: team, headline, spec row, server-scored fit chip, Apply CTA. */
-export function PostingCard({ posting, applied, onApply, onPress }: PostingCardProps) {
+/**
+ * Roster-spot card. Reads top to bottom as team → role → requirements → fit,
+ * which is the order a player actually evaluates an opening in. The tier-coloured
+ * rail lets the ranking survive a fast scroll, and the fit score sits in a
+ * separate footer band so the number and the action are the last thing seen.
+ */
+export function PostingCard({
+  posting,
+  applied,
+  pending = false,
+  onApply,
+  onPress,
+}: PostingCardProps) {
   const teamName = posting.team?.name ?? 'Unknown team';
+  const match = posting.match;
+
+  const meta = [posting.team?.league, posting.team?.location, relativeTime(posting.created_at)]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-      <Card className="mb-3">
-        <View className="flex-row items-center">
-          <Avatar name={teamName} size={38} shape="square" />
-          <View className="ml-3 flex-1">
-            <Text className="font-sans-bold text-[14px] text-ink">{teamName}</Text>
-            <Text className="font-sans mt-0.5 text-[12px] text-slate">
-              {[posting.team?.league, posting.team?.location].filter(Boolean).join(' · ')}
+    <Touchable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${teamName}, ${posting.position}: ${posting.headline}`}
+      scaleTo={0.99}
+      dimTo={1}
+      className="mb-3">
+      <Card bare rail={match ? tierColor(match.tier) : undefined}>
+        <View className="p-4 pb-3.5">
+          <View className="flex-row items-center">
+            <Avatar name={teamName} size={40} shape="square" />
+            <View className="ml-3 flex-1">
+              <Text className="font-sans-bold text-[14px] text-ink" numberOfLines={1}>
+                {teamName}
+              </Text>
+              <Text className="font-sans mt-0.5 text-[11px] text-slate" numberOfLines={1}>
+                {meta}
+              </Text>
+            </View>
+            <StatusPill status={posting.status} />
+          </View>
+
+          <View className="mt-3.5 flex-row items-start">
+            <PositionBadge position={posting.position} tone="dark" />
+            <Text
+              className="font-display ml-2.5 flex-1 text-[17px] leading-[23px] text-ink"
+              numberOfLines={2}
+              style={{ letterSpacing: -0.2 }}>
+              {posting.headline}
             </Text>
           </View>
-          <StatusPill status={posting.status} />
-        </View>
 
-        <View className="mt-3 flex-row items-center">
-          <PositionBadge position={posting.position} />
-          <Text className="font-display ml-2 flex-1 text-[17px] leading-[22px] text-ink">
-            {posting.headline}
-          </Text>
-        </View>
-
-        <View className="mt-3">
-          <SpecRow
+          <SpecStrip
+            className="mt-3.5"
             specs={[
               { label: 'Ideal ht', value: `${cmToFeetInches(posting.ideal_height_cm)}+` },
-              { label: 'Ideal wt', value: `${kgToLbs(posting.ideal_weight_kg)}+ lbs` },
+              { label: 'Ideal wt', value: `${kgToLbs(posting.ideal_weight_kg)}+` },
               { label: 'Minutes', value: `${posting.expected_minutes} MPG` },
             ]}
           />
         </View>
 
-        {posting.match ? (
-          <View className="mt-3">
-            <MatchChip
-              score={posting.match.score}
-              tier={posting.match.tier}
-              reason={posting.match.reason}
-            />
-          </View>
-        ) : null}
-
-        <View className="mt-3 flex-row items-center justify-between border-t border-border pt-3">
-          <View className="flex-row items-center">
-            <Ionicons name="time-outline" size={13} color={COLORS.slate} />
-            <Text className="font-sans ml-1 text-[12px] text-slate">
-              Posted {relativeTime(posting.created_at)}
+        <View className="flex-row items-center border-t border-border bg-bg px-4 py-3">
+          {match ? (
+            <FitScore score={match.score} tier={match.tier} reason={match.reason} />
+          ) : (
+            <Text className="font-sans flex-1 text-[12px] text-slate">
+              Fit not scored — complete your profile.
             </Text>
-          </View>
+          )}
+
           <Button
             label="Apply"
             doneLabel="Applied"
             done={applied}
+            loading={pending}
             onPress={onApply}
-            className="w-[124px]"
+            fullWidth={false}
+            className="ml-3 w-[112px]"
           />
         </View>
       </Card>
-    </Pressable>
+    </Touchable>
   );
 }

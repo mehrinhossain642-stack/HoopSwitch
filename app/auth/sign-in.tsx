@@ -1,14 +1,11 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View } from 'react-native';
+import { AuthScaffold, OrDivider } from '../../components/AuthScaffold';
+import { Button } from '../../components/Button';
+import { InlineError } from '../../components/ScreenState';
+import { TextField } from '../../components/TextField';
+import { Touchable } from '../../components/Touchable';
 import { useSession } from '../../lib/session';
 import { errorMessage } from '../../lib/useApi';
 
@@ -18,14 +15,17 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Per-field errors so the message sits next to the input that caused it.
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   async function handleSignIn() {
     setError('');
 
-    if (!email.trim() || !password) {
-      setError('Enter your email and password.');
-      return;
-    }
+    const next: typeof fieldErrors = {};
+    if (!email.trim()) next.email = 'Enter the email you signed up with.';
+    if (!password) next.password = 'Enter your password.';
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) return;
 
     try {
       setLoading(true);
@@ -42,87 +42,67 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
-      <View className="flex-1 px-5 pt-5">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 justify-center"
-        >
-          <Ionicons name="arrow-back" size={22} color="#141518" />
-        </Pressable>
+    <AuthScaffold
+      eyebrow="Sign in"
+      title="Welcome back"
+      subtitle="Pick up where you left off — your fit scores are already waiting.">
+      {error ? <InlineError message={error} /> : null}
 
-        <Text className="font-display mt-5 text-[28px] text-ink">
-          Welcome back
-        </Text>
+      <TextField
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
+        icon="mail-outline"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        error={fieldErrors.email ?? null}
+      />
 
-        <Text className="font-sans mt-1 text-[13px] text-slate">
-          Sign in to your account
-        </Text>
+      <TextField
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Your password"
+        icon="lock-closed-outline"
+        secure
+        autoCapitalize="none"
+        autoComplete="current-password"
+        textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={handleSignIn}
+        error={fieldErrors.password ?? null}
+      />
 
-        <Text className="font-sans-semibold mt-7 text-[12px] text-ink">
-          Email
-        </Text>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel="Forgot password"
+        scaleTo={1}
+        dimTo={0.6}
+        className="mb-5 self-start py-1">
+        <Text className="font-sans-semibold text-[12px] text-primary">Forgot password?</Text>
+      </Touchable>
 
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[14px] text-ink"
-        />
+      <Button label="Sign in" size="lg" loading={loading} onPress={handleSignIn} />
 
-        <Text className="font-sans-semibold mt-5 text-[12px] text-ink">
-          Password
-        </Text>
+      <OrDivider />
 
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          secureTextEntry
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[14px] text-ink"
-        />
-
-        <Pressable className="mt-3">
-          <Text className="font-sans-medium text-[11px] text-primary">
-            Forgot password?
+      <View className="items-center">
+        <Touchable
+          onPress={() => router.replace('/auth/welcome')}
+          accessibilityRole="button"
+          accessibilityLabel="Create an account"
+          scaleTo={1}
+          dimTo={0.6}
+          className="h-11 justify-center">
+          <Text className="font-sans text-[13px] text-slate">
+            New to HoopSwitch?{' '}
+            <Text className="font-sans-bold text-primary">Create an account</Text>
           </Text>
-        </Pressable>
-
-        {error ? (
-          <Text className="font-sans mt-4 text-[12px] text-red-600">
-            {error}
-          </Text>
-        ) : null}
-
-        <Pressable
-          onPress={handleSignIn}
-          disabled={loading}
-          className="mt-6 items-center rounded-btn bg-primary py-4"
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="font-sans-semibold text-[14px] text-white">
-              Sign In
-            </Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/auth/welcome')}
-          className="mt-4"
-        >
-          <Text className="font-sans text-[11px] text-slate">
-            Don't have an account?{' '}
-            <Text className="font-sans-semibold text-primary">
-              Sign Up
-            </Text>
-          </Text>
-        </Pressable>
+        </Touchable>
       </View>
-    </SafeAreaView>
+    </AuthScaffold>
   );
 }

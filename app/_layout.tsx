@@ -1,5 +1,6 @@
 import '../global.css';
 
+import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -10,7 +11,7 @@ import { Sora_600SemiBold, Sora_700Bold, useFonts } from '@expo-google-fonts/sor
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SessionProvider } from '../lib/session';
@@ -24,6 +25,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    // Condensed scoreboard face — every stat numeral and eyebrow label.
+    BebasNeue_400Regular,
   });
 
   // Font loading must never be able to wedge the app. Bundled fonts resolve in
@@ -41,7 +44,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <SessionProvider>
-          <StatusBar style="dark" />
+          {/* The splash and auth screens are dark; light content keeps the
+              status bar readable over them. Screens with the ink header slab
+              also sit under a dark surface. */}
+          <StatusBar style="light" />
           {ready ? (
             <Stack
               screenOptions={{
@@ -55,9 +61,8 @@ export default function RootLayout() {
               <Stack.Screen name="coach" />
             </Stack>
           ) : (
-            <View className="flex-1 items-center justify-center bg-bg">
-              <ActivityIndicator color={COLORS.primary} />
-            </View>
+            // Matches the splash background so the handoff isn't a white flash.
+            <View className="flex-1 bg-ink-900" />
           )}
         </SessionProvider>
       </SafeAreaProvider>

@@ -1,22 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CONTENT_MAX_WIDTH, useLayout } from '../../lib/layout';
 import { COLORS } from '../../lib/theme';
+import { Button } from '../Button';
+import { Screen } from '../Screen';
 import { InlineError } from '../ScreenState';
+import { Touchable } from '../Touchable';
 
 export const TOTAL_STEPS = 4;
 
 type StepScaffoldProps = {
-  /** 1-based, drives both the progress bar and the "N of 4" caption. */
+  /** 1-based, drives both the progress bar and the "Step N of 4" caption. */
   step: number;
   title: string;
   subtitle: string;
@@ -42,39 +38,67 @@ export function StepScaffold({
   children,
 }: StepScaffoldProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { gutter, isDesktop } = useLayout();
+
+  const column = {
+    width: '100%' as const,
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center' as const,
+    paddingHorizontal: gutter,
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
+    <Screen edges={[]}>
+      {/* Same ink slab as the rest of the app, so onboarding doesn't read as a
+          separate white-label flow bolted on the front. */}
+      <View className="bg-ink-900" style={{ paddingTop: isDesktop ? 18 : insets.top + 6 }}>
+        <View style={column}>
+          <View className="h-12 flex-row items-center">
+            <Touchable
+              onPress={() => router.back()}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              className="h-9 w-9 items-center justify-center rounded-full bg-ink-700">
+              <Ionicons name="chevron-back" size={18} color={COLORS.surface} />
+            </Touchable>
+
+            <Text className="font-stat flex-1 text-center text-[15px] tracking-eyebrow text-surface">
+              CREATE YOUR PROFILE
+            </Text>
+
+            <View className="min-w-[36px] items-end">
+              <Text className="font-stat text-[15px] tracking-stat text-slate-soft">
+                {step}/{TOTAL_STEPS}
+              </Text>
+            </View>
+          </View>
+
+          <ProgressBar step={step} />
+        </View>
+
+        <View className="mt-3.5 h-[3px] bg-primary" />
+      </View>
+
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View className="flex-row items-center px-5 pb-2 pt-1">
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={10}
-            className="h-10 w-10 items-center justify-start"
-            accessibilityLabel="Go back">
-            <Ionicons name="arrow-back" size={22} color={COLORS.ink} />
-          </Pressable>
-          <Text className="font-sans-semibold flex-1 text-center text-[15px] text-ink">
-            Create your profile
-          </Text>
-          {/* Balances the back button so the title stays optically centred. */}
-          <View className="h-10 w-10" />
-        </View>
-
-        <ProgressBar step={step} />
-
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          contentContainerStyle={{ ...column, paddingTop: 22, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <Text className="font-sans mb-3 mt-3 text-[12px] text-slate">
-            {step} of {TOTAL_STEPS}
+          <Text className="font-stat text-[15px] tracking-eyebrow text-primary">
+            STEP {step} OF {TOTAL_STEPS}
           </Text>
 
-          <Text className="font-display text-[26px] leading-[32px] text-ink">{title}</Text>
-          <Text className="font-sans mb-6 mt-1.5 text-[13px] leading-[19px] text-slate">
+          <Text
+            className="font-display mt-1.5 text-[26px] leading-[32px] text-ink"
+            style={{ letterSpacing: -0.5 }}
+            accessibilityRole="header">
+            {title}
+          </Text>
+          <Text className="font-sans mb-6 mt-2 text-[14px] leading-[20px] text-slate">
             {subtitle}
           </Text>
 
@@ -83,34 +107,40 @@ export function StepScaffold({
           {children}
         </ScrollView>
 
-        <View className="border-t border-border px-5 pb-2 pt-3">
-          <Pressable
-            onPress={onContinue}
-            disabled={submitting || !canContinue}
-            className={`items-center justify-center rounded-btn py-4 ${
-              canContinue && !submitting ? 'bg-primary' : 'bg-primary/40'
-            }`}
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-            {submitting ? (
-              <ActivityIndicator color={COLORS.surface} />
-            ) : (
-              <Text className="font-sans-bold text-[15px] text-surface">{ctaLabel}</Text>
-            )}
-          </Pressable>
+        {/* Pinned so the way forward is always visible, however long the step is. */}
+        <View
+          className="border-t border-border bg-surface"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+          <View style={{ ...column, paddingTop: 12 }}>
+            <Button
+              label={ctaLabel}
+              size="lg"
+              icon="arrow-forward"
+              iconTrailing
+              loading={submitting}
+              disabled={!canContinue}
+              onPress={onContinue}
+            />
+          </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 /** Four segments; completed ones fill orange. */
 function ProgressBar({ step }: { step: number }) {
   return (
-    <View className="flex-row gap-2 px-5">
+    <View
+      className="mt-1 flex-row gap-1.5"
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: TOTAL_STEPS, now: step }}>
       {Array.from({ length: TOTAL_STEPS }, (_, index) => (
         <View
           key={index}
-          className={`h-1 flex-1 rounded-full ${index < step ? 'bg-primary' : 'bg-border'}`}
+          className={`h-[5px] flex-1 rounded-full ${
+            index < step ? 'bg-primary' : 'bg-ink-700'
+          }`}
         />
       ))}
     </View>
