@@ -145,6 +145,57 @@ PLAYERS.each do |attrs|
   end
 end
 
+# --- Onboarding details ------------------------------------------------------
+# The seeded players represent *finished* profiles, so they carry the fields the
+# 4-step flow collects and are stamped as onboarded. Without this they'd be
+# routed back into onboarding on sign-in.
+
+ONBOARDING = {
+  "Marcus Webb" => {
+    school: "Humber College", graduation_year: 2026, grade: "University Year 4",
+    city: "Toronto", province: "ON", secondary_position: "SG",
+    current_team: "Humber Hawks", goals: %w[u_sports exposure],
+    short_term_goal: "Earn a starting spot at a U SPORTS program"
+  },
+  "Elijah Carter" => {
+    school: "Dalhousie University", graduation_year: 2028, grade: "University Year 2",
+    city: "Halifax", province: "NS", secondary_position: "SG",
+    current_team: "Dalhousie Tigers", goals: %w[ncaa professional exposure],
+    short_term_goal: "Prove I can score against bigger guards"
+  },
+  "Deshawn Price" => {
+    school: "University of Windsor", graduation_year: 2028, grade: "University Year 3",
+    city: "Windsor", province: "ON", secondary_position: "SF",
+    current_team: "Windsor Lancers", goals: %w[u_sports skills],
+    short_term_goal: "Shoot 40% from three on higher volume"
+  },
+  "Andre Boucher" => {
+    school: "Concordia University", graduation_year: 2026, grade: "University Year 5",
+    city: "Montreal", province: "QC", secondary_position: "PF",
+    current_team: "Concordia Stingers", goals: %w[professional u_sports],
+    short_term_goal: "Lead the country in blocks again"
+  },
+  "Jordan Ellis" => {
+    school: "University of British Columbia", graduation_year: 2029, grade: "University Year 2",
+    city: "Vancouver", province: "BC", secondary_position: "PF",
+    current_team: "UBC Thunderbirds", goals: %w[skills exposure],
+    short_term_goal: "Become a reliable three-and-D wing"
+  },
+  "Tyrell Nkemdi" => {
+    school: "Toronto Metropolitan University", graduation_year: 2027, grade: "University Year 3",
+    city: "Brampton", province: "ON", secondary_position: "C",
+    current_team: "Ryerson Rams", goals: %w[u_sports professional skills],
+    short_term_goal: "Stretch my range to the U SPORTS three"
+  }
+}.freeze
+
+ONBOARDING.each do |name, attrs|
+  profile = PlayerProfile.find_by(name: name)
+  next if profile.nil?
+
+  profile.update!(attrs.merge(onboarding_completed_at: Time.current))
+end
+
 # --- Teams and postings ------------------------------------------------------
 
 TEAMS = [

@@ -54,8 +54,9 @@ export default function SignUpScreen() {
     try {
       setLoading(true);
 
-      // signUp persists the JWT, so the session survives an app restart.
-      const user = await signUp(
+      // signUp persists the JWT, so the session survives an app restart. New
+      // players land in the "Create your profile" flow; coaches skip it.
+      const { route } = await signUp(
         email.trim().toLowerCase(),
         password,
         confirmPassword,
@@ -63,7 +64,7 @@ export default function SignUpScreen() {
         fullName
       );
 
-      router.replace(user.role === 'coach' ? '/coach' : '/player');
+      router.replace(route);
     } catch (err) {
       setError(errorMessage(err));
     } finally {

@@ -177,9 +177,23 @@ export type ApiPlayer = {
   fg_pct: number;
   career_stats: ApiCareerStat[];
   highlights: ApiHighlight[];
+  // Collected by the 4-step onboarding flow.
+  school: string | null;
+  graduation_year: number | null;
+  grade: string | null;
+  city: string | null;
+  province: string | null;
+  secondary_position: Position | null;
+  current_team: string | null;
+  goals: PlayerGoal[];
+  short_term_goal: string | null;
+  onboarding_complete: boolean;
   match?: ApiMatch;
   connected?: boolean;
 };
+
+/** Goal keys are stable server-side; labels live in the onboarding screen. */
+export type PlayerGoal = 'u_sports' | 'ncaa' | 'professional' | 'skills' | 'exposure';
 
 export type ApiTeam = {
   id: number;
@@ -290,10 +304,25 @@ export type ProfilePatch = Partial<{
   rpg: number;
   apg: number;
   fg_pct: number;
+  // Onboarding
+  school: string;
+  graduation_year: number;
+  grade: string;
+  city: string;
+  province: string;
+  secondary_position: Position | null;
+  current_team: string;
+  goals: PlayerGoal[];
+  short_term_goal: string;
 }>;
 
 export function updateProfile(token: string, patch: ProfilePatch): Promise<ApiPlayer> {
   return json<ApiPlayer>('/profile', { method: 'PATCH', token, body: { profile: patch } });
+}
+
+/** Marks the 4-step flow finished so the client stops routing into it. */
+export function completeOnboarding(token: string): Promise<ApiPlayer> {
+  return json<ApiPlayer>('/profile/complete_onboarding', { method: 'POST', token });
 }
 
 export function addHighlight(

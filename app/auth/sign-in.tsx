@@ -30,10 +30,10 @@ export default function SignInScreen() {
     try {
       setLoading(true);
 
-      // signIn persists the JWT and returns the user, so routing is role-aware
-      // rather than always landing on the player flow.
-      const user = await signIn(email.trim().toLowerCase(), password);
-      router.replace(user.role === 'coach' ? '/coach' : '/player');
+      // signIn persists the JWT and resolves where this user belongs: their
+      // role's home, or back into onboarding if they never finished it.
+      const { route } = await signIn(email.trim().toLowerCase(), password);
+      router.replace(route);
     } catch (err) {
       setError(errorMessage(err));
     } finally {

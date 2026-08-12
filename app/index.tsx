@@ -12,14 +12,22 @@ import {
 import { useSession } from '../lib/session';
 
 export default function SplashScreen() {
-  const { user, restoring } = useSession();
+  const { user, restoring, landingRoute } = useSession();
 
   // A stored session should skip the sign-in gate entirely — otherwise
   // persisting the JWT buys nothing and every cold start asks for a password.
+  // A player who abandoned onboarding resumes it instead of entering the app.
   useEffect(() => {
     if (restoring || !user) return;
-    router.replace(user.role === 'coach' ? '/coach' : '/player');
-  }, [restoring, user]);
+
+    let cancelled = false;
+    landingRoute().then((route) => {
+      if (!cancelled) router.replace(route);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [restoring, user, landingRoute]);
 
   return (
     <View className="flex-1 items-center justify-center bg-black">

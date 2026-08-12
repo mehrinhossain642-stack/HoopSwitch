@@ -1,0 +1,158 @@
+# Task runner for the HoopSwitch monorepo (Expo client at the root, Rails API in api/).
+# https://taskfile.dev  —  `brew install go-task` if you don't have it.
+#
+#   task            list everything
+#   task start      Postgres + Rails + Expo, one Ctrl+C stops all
+version: '3'
+
+vars:
+  API_DIR: api
+  API_PORT: '{{.API_PORT | default "3001"}}'
+  EXPO_PORT: '{{.EXPO_PORT | default "8081"}}'
+  # postgresql@17 is keg-only, so psql/pg_dump need to be put on PATH.
+  PG_BIN: /opt/homebrew/opt/postgresql@17/bin
+
+tasks:
+  default:
+    desc: List available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  # --- the main one ---------------------------------------------------------
+
+  start:
+    desc: Start Postgres, the Rails API and Expo in the background
+    aliases: [dev, up]
+    cmds:
+      - ./scripts/dev.sh start
+
+  stop:
+    desc: Stop the API and Expo (Postgres keeps running)
+    aliases: [down]
+    cmds:
+      - ./scripts/dev.sh stop
+
+  restart:
+    desc: Restart the API and Expo
+    cmds:
+      - ./scripts/dev.sh restart
+
+  status:
+    desc: Show what's running and on which URLs
+    aliases: [ps]
+    cmds:
+      - ./scripts/dev.sh status
+
+  logs:
+    desc: Follow the API and Expo logs (Ctrl+C stops tailing, not the servers)
+    interactive: true
+    cmds:
+      - ./scripts/dev.sh logs
+
+  # --- individual services -------------------------------------------------
+
+  api:
+    desc: Run only the Rails API (port {{.API_PORT}}, bound for LAN access)
+    dir: '{{.API_DIR}}'
+    interactive: true
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails server -p {{.API_PORT}} -b 0.0.0.0
+
+  app:
+    desc: Run only the Expo dev server (port {{.EXPO_PORT}})
+    interactive: true
+    cmds:
+      - npx expo start --port {{.EXPO_PORT}}
+
+  pg:
+    desc: Ensure PostgreSQL is running
+    silent: true
+    status:
+      - '{{.PG_BIN}}/pg_isready -q'
+    cmds:
+      - brew services start postgresql@17
+      - '{{.PG_BIN}}/pg_isready -q -t 30'
+
+  # --- setup / teardown ----------------------------------------------------
+
+  setup:
+    desc: Install all dependencies and prepare the database (run once)
+    deps: [pg]
+    cmds:
+      - npm install
+      - cd {{.API_DIR}} && bundle install
+      - task: db:prepare
+
+  # --- database ------------------------------------------------------------
+
+  db:
+    desc: Open a psql shell on the development database
+    dir: '{{.API_DIR}}'
+    interactive: true
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails dbconsole
+
+  db:prepare:
+    desc: Create the database if missing, run migrations, seed on first create
+    dir: '{{.API_DIR}}'
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails db:prepare
+
+  db:reset:
+    desc: Drop, recreate, migrate and reseed the database (destroys local data)
+    dir: '{{.API_DIR}}'
+    deps: [pg]
+    prompt: This deletes all local data in api_development. Continue?
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails db:reset
+
+  db:seed:
+    desc: Re-run seeds
+    dir: '{{.API_DIR}}'
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails db:seed
+
+  console:
+    desc: Open a Rails console
+    dir: '{{.API_DIR}}'
+    interactive: true
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails console
+
+  # --- checks --------------------------------------------------------------
+
+  check:
+    desc: Run everything CI would (backend tests, lint, typecheck)
+    cmds:
+      - task: test
+      - task: lint
+      - task: typecheck
+
+  test:
+    desc: Run the Rails test suite
+    dir: '{{.API_DIR}}'
+    deps: [pg]
+    cmds:
+      - PATH="{{.PG_BIN}}:$PATH" bin/rails test
+
+  lint:
+    desc: Run RuboCop on the API
+    dir: '{{.API_DIR}}'
+    cmds:
+      - bin/rubocop {{.CLI_ARGS}}
+
+  typecheck:
+    desc: Typecheck the Expo client
+    cmds:
+      - npx tsc --noEmit
+
+  doctor:
+    desc: Check the Expo dependency tree
+    cmds:
+      - npx expo-doctor

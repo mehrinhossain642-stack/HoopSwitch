@@ -89,6 +89,88 @@ class ApiFlowTest < ActionDispatch::IntegrationTest
     assert_equal "more height would help", after.first["match"]["reason"]
   end
 
+  # --- onboarding ---------------------------------------------------------
+
+  test "a new player starts un-onboarded and seeded players are onboarded" do
+    _user, headers = register(role: "player")
+    get "/profile", headers: headers
+    assert_response :success
+    refute json["onboarding_complete"], "a fresh signup should need onboarding"
+
+    seeded = login(email: "marcus.webb@example.com")
+    get "/profile", headers: seeded
+    assert json["onboarding_complete"], "seeded players represent finished profiles"
+  end
+
+  test "onboarding fields save step by step and complete the flow" do
+    _user, headers = register(role: "player")
+
+    # Step 1 — basics. City/province drive the display `location`.
+    patch "/profile",
+          params: { profile: { name: "Sam Okafor", school: "Carleton University",
+                               graduation_year: 2028, grade: "University Year 2",
+                               city: "Ottawa", province: "ON" } },
+          headers: headers, as: :json
+    assert_response :success
+    assert_equal "Ottawa", json["city"]
+    assert_equal "Ottawa, ON", json["location"], "location should derive from city/province"
+
+    # Step 2 — basketball info.
+    patch "/profile",
+          params: { profile: { position: "SG", secondary_position: "SF", height_cm: 193,
+                               weight_kg: 86, wingspan_cm: 201, current_team: "Ottawa Elite" } },
+          headers: headers, as: :json
+    assert_response :success
+    assert_equal "SF", json["secondary_position"]
+
+    # Step 3 — goals.
+    patch "/profile",
+          params: { profile: { goals: %w[u_sports exposure],
+                               short_term_goal: "Earn a starting spot" } },
+          headers: headers, as: :json
+    assert_response :success
+    assert_equal %w[u_sports exposure], json["goals"]
+
+    # Step 4 — a highlight link, then finish.
+    post "/highlights",
+         params: { highlight: { title: "Summer Elite Run",
+                                url: "https://www.youtube.com/watch?v=abc123" } },
+         headers: headers, as: :json
+    assert_response :created
+
+    post "/profile/complete_onboarding", headers: headers, as: :json
+    assert_response :success
+    assert json["onboarding_complete"]
+    assert_equal 1, json["highlights"].length
+  end
+
+  test "onboarding rejects invalid selections" do
+    _user, headers = register(role: "player")
+
+    patch "/profile", params: { profile: { goals: %w[u_sports moon_landing] } },
+          headers: headers, as: :json
+    assert_response :unprocessable_entity
+    assert json["errors"].any? { |e| e.match?(/moon_landing/) }
+
+    patch "/profile", params: { profile: { province: "XX" } }, headers: headers, as: :json
+    assert_response :unprocessable_entity
+
+    patch "/profile", params: { profile: { grade: "Grade 47" } }, headers: headers, as: :json
+    assert_response :unprocessable_entity
+
+    # Secondary position must differ from primary.
+    patch "/profile", params: { profile: { position: "PG", secondary_position: "PG" } },
+          headers: headers, as: :json
+    assert_response :unprocessable_entity
+    assert json["errors"].any? { |e| e.match?(/differ/i) }
+  end
+
+  test "a coach has no onboarding profile endpoint" do
+    coach_headers = login(email: "mike.bradley@westernmustangs.example.com")
+    post "/profile/complete_onboarding", headers: coach_headers, as: :json
+    assert_response :forbidden
+  end
+
   test "profile update rejects out-of-range values" do
     headers = login(email: "marcus.webb@example.com")
     patch "/profile", params: { profile: { height_cm: 400 } }, headers: headers, as: :json

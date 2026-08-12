@@ -19,7 +19,18 @@ module PlayerSerializer
       ppg: player.ppg.to_f,
       rpg: player.rpg.to_f,
       apg: player.apg.to_f,
-      fg_pct: player.fg_pct.to_f
+      fg_pct: player.fg_pct.to_f,
+      # Onboarding fields
+      school: player.school,
+      graduation_year: player.graduation_year,
+      grade: player.grade,
+      city: player.city,
+      province: player.province,
+      secondary_position: player.secondary_position,
+      current_team: player.current_team,
+      goals: player.goals,
+      short_term_goal: player.short_term_goal,
+      onboarding_complete: player.onboarding_complete?
     }
 
     if include_nested

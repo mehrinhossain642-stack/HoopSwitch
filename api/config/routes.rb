@@ -18,7 +18,9 @@ Rails.application.routes.draw do
   end
 
   # --- Player ------------------------------------------------------------
-  resource :profile, only: %i[show update], controller: "profiles"
+  resource :profile, only: %i[show update], controller: "profiles" do
+    post :complete_onboarding, on: :collection
+  end
   resources :highlights, only: %i[create destroy]
   resources :career_stats, only: %i[create]
 

@@ -8,10 +8,26 @@ no network calls, no database.
 
 ## Run it
 
+One command brings up the whole stack — Postgres, the Rails API and Expo:
+
 ```bash
-npm install
-npx expo start
+task setup     # once: installs deps, creates and seeds the database
+task start     # starts everything in the background, returns to your prompt
 ```
+
+```bash
+task status    # what's running, and on which URLs
+task logs      # follow both logs (Ctrl+C stops tailing, not the servers)
+task stop      # stop the API and Expo (Postgres keeps running)
+task restart
+```
+
+`task` is [go-task](https://taskfile.dev) (`brew install go-task`). Everything it does lives in
+[Taskfile.yml](Taskfile.yml) and [scripts/dev.sh](scripts/dev.sh), so you can run
+`./scripts/dev.sh start` (or `npm run dev`) without it. `task --list` shows the rest — `task db`
+for a psql shell, `task console` for a Rails console, `task check` for tests + lint + typecheck.
+
+Logs and pidfiles go to `.dev/` (gitignored). To run just one side: `task api` or `task app`.
 
 Then pick a client:
 
@@ -29,7 +45,8 @@ npx expo-doctor      # 18/18 checks pass
 
 ### Backend
 
-The client now reads from the Rails API in [`api/`](api/), so **start it first**:
+The client reads from the Rails API in [`api/`](api/). `task start` runs it for you; to run it
+by hand instead:
 
 ```bash
 cd api

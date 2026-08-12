@@ -34,23 +34,52 @@ const storage = {
   },
 };
 
+/** Where a user lands after authenticating. */
+export type LandingRoute = '/onboarding/basics' | '/player' | '/coach';
+
+export type AuthOutcome = { user: ApiUser; route: LandingRoute };
+
 type SessionState = {
   token: string | null;
   user: ApiUser | null;
   /** True until the persisted session has been read back from storage. */
   restoring: boolean;
-  signIn: (email: string, password: string) => Promise<ApiUser>;
+  signIn: (email: string, password: string) => Promise<AuthOutcome>;
   signUp: (
     email: string,
     password: string,
     passwordConfirmation: string,
     role: UserRole,
     fullName?: string
-  ) => Promise<ApiUser>;
+  ) => Promise<AuthOutcome>;
   signOut: () => Promise<void>;
   /** Token guaranteed non-null; throws if called while signed out. */
   requireToken: () => string;
+  /**
+   * Where a signed-in user belongs: the onboarding flow if they're a player who
+   * hasn't finished it, otherwise their role's home. Coaches skip onboarding —
+   * the designed flow is player-specific and /signup already seeds their team.
+   */
+  landingRoute: () => Promise<LandingRoute>;
 };
+
+/**
+ * Resolved against an explicit token so it works immediately after sign-in,
+ * before the token has landed in React state.
+ */
+async function resolveLandingRoute(user: ApiUser, token: string): Promise<LandingRoute> {
+  if (user.role === 'coach') return '/coach';
+
+  // Read the flag from the server rather than trusting a cached copy — the
+  // profile may have been completed on another device.
+  try {
+    const profile = await api.getProfile(token);
+    return profile.onboarding_complete ? '/player' : '/onboarding/basics';
+  } catch {
+    // If the check fails, don't trap the user in onboarding.
+    return '/player';
+  }
+}
 
 const SessionContext = createContext<SessionState | null>(null);
 
@@ -97,10 +126,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string): Promise<AuthOutcome> => {
       const result = await api.login(email, password);
       await persist(result.token, result.user);
-      return result.user;
+      return {
+        user: result.user,
+        route: await resolveLandingRoute(result.user, result.token),
+      };
     },
     [persist]
   );
@@ -112,7 +144,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       passwordConfirmation: string,
       role: UserRole,
       fullName?: string
-    ) => {
+    ): Promise<AuthOutcome> => {
       const result = await api.signup(email, password, passwordConfirmation, role);
 
       // /signup seeds the role record with a placeholder name derived from the
@@ -132,7 +164,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
 
       await persist(result.token, result.user);
-      return result.user;
+      return {
+        user: result.user,
+        // A brand-new player always needs onboarding; the helper still routes
+        // coaches straight to their team.
+        route: await resolveLandingRoute(result.user, result.token),
+      };
     },
     [persist]
   );
@@ -156,9 +193,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return token;
   }, [token]);
 
+  // For the splash screen, where a restored session already has its token in state.
+  const landingRoute = useCallback(async (): Promise<LandingRoute> => {
+    if (!user || !token) return '/player';
+    return resolveLandingRoute(user, token);
+  }, [user, token]);
+
   const value = useMemo<SessionState>(
-    () => ({ token, user, restoring, signIn, signUp, signOut, requireToken }),
-    [token, user, restoring, signIn, signUp, signOut, requireToken]
+    () => ({ token, user, restoring, signIn, signUp, signOut, requireToken, landingRoute }),
+    [token, user, restoring, signIn, signUp, signOut, requireToken, landingRoute]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

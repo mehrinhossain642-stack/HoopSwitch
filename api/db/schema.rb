@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_151251) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,8 +38,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
     t.index ["player_profile_id"], name: "index_connections_on_player_profile_id"
     t.index ["posting_id", "player_profile_id"], name: "index_connections_on_posting_id_and_player_profile_id", unique: true
     t.index ["posting_id"], name: "index_connections_on_posting_id"
-    t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying, 'coach'::character varying]::text[])", name: "connections_initiated_by_check"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying]::text[])", name: "connections_status_check"
+    t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying::text, 'coach'::character varying::text])", name: "connections_initiated_by_check"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "connections_status_check"
   end
 
   create_table "highlights", force: :cascade do |t|
@@ -52,31 +52,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
     t.datetime "updated_at", null: false
     t.string "url", null: false
     t.index ["player_profile_id"], name: "index_highlights_on_player_profile_id"
-    t.check_constraint "source_type::text = ANY (ARRAY['external'::character varying, 'uploaded'::character varying]::text[])", name: "highlights_source_type_check"
+    t.check_constraint "source_type::text = ANY (ARRAY['external'::character varying::text, 'uploaded'::character varying::text])", name: "highlights_source_type_check"
   end
 
   create_table "player_profiles", force: :cascade do |t|
     t.integer "age", null: false
     t.decimal "apg", precision: 4, scale: 1, default: "0.0", null: false
     t.text "bio"
+    t.string "city"
     t.datetime "created_at", null: false
+    t.string "current_team"
     t.string "dominant_hand", default: "Right", null: false
     t.integer "eligibility_years", default: 1, null: false
     t.decimal "fg_pct", precision: 4, scale: 1, default: "0.0", null: false
+    t.string "goals", default: [], null: false, array: true
+    t.string "grade"
+    t.integer "graduation_year"
     t.integer "height_cm", null: false
     t.string "location"
     t.string "name", null: false
+    t.datetime "onboarding_completed_at"
     t.string "position", null: false
     t.decimal "ppg", precision: 4, scale: 1, default: "0.0", null: false
+    t.string "province"
     t.decimal "rpg", precision: 4, scale: 1, default: "0.0", null: false
+    t.string "school"
+    t.string "secondary_position"
+    t.string "short_term_goal"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.decimal "weight_kg", precision: 5, scale: 1, null: false
     t.integer "wingspan_cm", null: false
+    t.index ["onboarding_completed_at"], name: "index_player_profiles_on_onboarding_completed_at"
     t.index ["position"], name: "index_player_profiles_on_position"
     t.index ["user_id"], name: "index_player_profiles_on_user_id", unique: true
-    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[])", name: "player_profiles_position_check"
-    t.check_constraint "dominant_hand::text = ANY (ARRAY['Left'::character varying, 'Right'::character varying, 'Ambidextrous'::character varying]::text[])", name: "player_profiles_hand_check"
+    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text])", name: "player_profiles_position_check"
+    t.check_constraint "dominant_hand::text = ANY (ARRAY['Left'::character varying::text, 'Right'::character varying::text, 'Ambidextrous'::character varying::text])", name: "player_profiles_hand_check"
+    t.check_constraint "goals <@ ARRAY['u_sports'::character varying, 'ncaa'::character varying, 'professional'::character varying, 'skills'::character varying, 'exposure'::character varying]", name: "player_profiles_goals_check"
+    t.check_constraint "secondary_position IS NULL OR (secondary_position::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[]))", name: "player_profiles_secondary_position_check"
   end
 
   create_table "postings", force: :cascade do |t|
@@ -93,8 +106,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
     t.index ["position"], name: "index_postings_on_position"
     t.index ["status"], name: "index_postings_on_status"
     t.index ["team_id"], name: "index_postings_on_team_id"
-    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[])", name: "postings_position_check"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'in_review'::character varying, 'closed'::character varying]::text[])", name: "postings_status_check"
+    t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text])", name: "postings_position_check"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'in_review'::character varying::text, 'closed'::character varying::text])", name: "postings_status_check"
   end
 
   create_table "teams", force: :cascade do |t|
@@ -122,7 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_190619) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
-    t.check_constraint "role::text = ANY (ARRAY['player'::character varying, 'coach'::character varying]::text[])", name: "users_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['player'::character varying::text, 'coach'::character varying::text])", name: "users_role_check"
   end
 
   add_foreign_key "career_stats", "player_profiles"
