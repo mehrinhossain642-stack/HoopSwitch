@@ -11,7 +11,7 @@ import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
 import { StatBlock } from '../../../components/StatBlock';
 import { DotPill } from '../../../components/StatusPill';
-import { SwitchRoleButton } from '../../../components/SwitchRoleButton';
+import { SignOutSection } from '../../../components/SignOutSection';
 import type { DominantHand, Position } from '../../../data/types';
 import * as api from '../../../lib/api';
 import type { ApiPlayer, ProfilePatch } from '../../../lib/api';
@@ -60,11 +60,10 @@ export default function PlayerProfile() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
         keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-center justify-between py-3">
+        <View className="py-3">
           <Text className="font-sans-semibold text-[12px] uppercase tracking-widest text-slate">
             My profile
           </Text>
-          <SwitchRoleButton />
         </View>
 
         {/* Hero */}
@@ -240,6 +239,8 @@ export default function PlayerProfile() {
             </Text>
           </Card>
         </View>
+
+        <SignOutSection />
       </ScrollView>
     </SafeAreaView>
   );

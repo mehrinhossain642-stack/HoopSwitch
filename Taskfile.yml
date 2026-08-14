@@ -44,6 +44,11 @@ tasks:
     cmds:
       - ./scripts/dev.sh status
 
+  qr:
+    desc: Print the Expo Go QR code again (scan from your phone)
+    cmds:
+      - ./scripts/dev.sh qr
+
   logs:
     desc: Follow the API and Expo logs (Ctrl+C stops tailing, not the servers)
     interactive: true

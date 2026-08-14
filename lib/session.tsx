@@ -175,17 +175,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    // Best-effort revocation; the local session is cleared either way.
-    if (token) {
+    // Clear locally *first*. Revocation is a network round trip, and while it
+    // was in flight `user` stayed set — long enough for the splash screen to
+    // decide it had a live session and route straight back into the app.
+    const revoking = token;
+    setToken(null);
+    setUser(null);
+    await Promise.all([storage.remove(TOKEN_KEY), storage.remove(USER_KEY)]);
+
+    // Best-effort revocation; the local session is already gone either way, so
+    // a failure here must not surface as a failed sign-out.
+    if (revoking) {
       try {
-        await api.logout(token);
+        await api.logout(revoking);
       } catch {
         // Already expired or offline — nothing more to do server-side.
       }
     }
-    setToken(null);
-    setUser(null);
-    await Promise.all([storage.remove(TOKEN_KEY), storage.remove(USER_KEY)]);
   }, [token]);
 
   const requireToken = useCallback(() => {

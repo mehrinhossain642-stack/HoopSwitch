@@ -10,7 +10,7 @@ import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
 import { StatBlock } from '../../../components/StatBlock';
 import { DotPill, StatusPill } from '../../../components/StatusPill';
-import { SwitchRoleButton } from '../../../components/SwitchRoleButton';
+import { SignOutSection } from '../../../components/SignOutSection';
 import type { Position, PostingStatus } from '../../../data/types';
 import * as api from '../../../lib/api';
 import type { ApiPosting, PostingPatch } from '../../../lib/api';
@@ -55,11 +55,10 @@ export default function CoachProfile() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
         keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-center justify-between py-3">
+        <View className="py-3">
           <Text className="font-sans-semibold text-[12px] uppercase tracking-widest text-slate">
             Team profile
           </Text>
-          <SwitchRoleButton />
         </View>
 
         {/* Hero */}
@@ -146,6 +145,8 @@ export default function CoachProfile() {
             />
           </Card>
         </View>
+
+        <SignOutSection />
       </ScrollView>
     </SafeAreaView>
   );

@@ -43,8 +43,13 @@ export function useApiData<T>(fetcher: () => Promise<T>, deps: unknown[] = []): 
     setLoading(true);
     setError(null);
 
-    fetcherRef
-      .current()
+    // Started off a resolved promise rather than called directly: fetchers
+    // close over `requireToken()`, which throws synchronously the moment the
+    // session goes away (sign-out, or an expired JWT). Called directly, that
+    // throw escapes the effect and React tears the screen down; inside the
+    // chain it lands in `.catch` like any other failure.
+    Promise.resolve()
+      .then(() => fetcherRef.current())
       .then((result) => {
         if (!mounted.current || id !== requestId.current) return;
         setData(result);

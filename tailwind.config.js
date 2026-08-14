@@ -21,6 +21,10 @@ module.exports = {
         border: '#E4E6EA',
         good: '#1FA971',
         partial: '#E8A33D',
+        // Destructive actions. Kept separate from `primary` so brand orange
+        // never has to double as a warning colour.
+        danger: '#DC2626',
+        'danger-soft': '#FDECEC',
       },
       fontFamily: {
         // Body / UI

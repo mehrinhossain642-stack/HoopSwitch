@@ -11,6 +11,8 @@ export const COLORS = {
   border: '#E4E6EA',
   good: '#1FA971',
   partial: '#E8A33D',
+  danger: '#DC2626',
+  dangerSoft: '#FDECEC',
 } as const;
 
 /**

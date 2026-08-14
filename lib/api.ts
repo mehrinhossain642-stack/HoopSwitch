@@ -108,10 +108,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<R
   const parsed = text.length > 0 ? safeJsonParse(text) : null;
 
   if (!response.ok) {
-    const errors = Array.isArray(parsed?.errors)
-      ? (parsed.errors as string[])
-      : [parsed?.error ?? `Request failed (${response.status})`];
-    throw new ApiError(response.status, errors);
+    throw new ApiError(response.status, errorsFrom(parsed, text, response.status));
   }
 
   return { data: parsed as T, authorization: response.headers.get('Authorization') };
@@ -123,6 +120,33 @@ function safeJsonParse(text: string): any {
   } catch {
     return null;
   }
+}
+
+/**
+ * Pulls user-facing messages out of an error response, most specific shape
+ * first.
+ *
+ * The plain-text branch matters: Devise renders auth failures as bare text
+ * ("Invalid email or password."), not the `{errors: [...]}` envelope the rest
+ * of the API uses. Reading JSON only meant every wrong password surfaced as
+ * "Request failed (401)", which looks like a broken login rather than a typo.
+ */
+function errorsFrom(parsed: any, text: string, status: number): string[] {
+  if (Array.isArray(parsed?.errors) && parsed.errors.length > 0) {
+    return parsed.errors as string[];
+  }
+  if (typeof parsed?.error === 'string' && parsed.error.length > 0) {
+    return [parsed.error];
+  }
+
+  // Bare-text body. Skip anything HTML-shaped — Rails' exception page is a
+  // wall of markup, never something to put in front of a user.
+  const trimmed = text.trim();
+  if (trimmed.length > 0 && trimmed.length <= 300 && !trimmed.startsWith('<')) {
+    return [trimmed];
+  }
+
+  return [`Request failed (${status})`];
 }
 
 /** Convenience wrapper for the common case where only the body matters. */

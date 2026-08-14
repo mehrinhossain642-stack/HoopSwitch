@@ -7,6 +7,7 @@
 #   ./scripts/dev.sh stop      stop the API and Expo
 #   ./scripts/dev.sh restart
 #   ./scripts/dev.sh status
+#   ./scripts/dev.sh qr        re-print the Expo Go QR code
 #   ./scripts/dev.sh logs      follow both logs (Ctrl+C just stops tailing)
 #
 # Normally driven through `task start` / `task stop`.
@@ -93,6 +94,43 @@ stop_service() {
   [[ "$stopped" -eq 1 ]] && ok "  stopped $name" || note "  $name was not running"
 }
 
+# The address a phone on the same Wi-Fi can actually reach. en0 is usually
+# right, but not when Ethernet or a second adapter is in play — so ask the
+# routing table which interface carries the default route first.
+lan_ip() {
+  local iface candidate ip
+  iface="$(route -n get default 2>/dev/null | awk '/interface: /{print $2; exit}' || true)"
+
+  for candidate in "$iface" en0 en1 en2; do
+    [[ -z "$candidate" ]] && continue
+    ip="$(ipconfig getifaddr "$candidate" 2>/dev/null || true)"
+    [[ -n "$ip" ]] && { printf '%s' "$ip"; return 0; }
+  done
+  return 1
+}
+
+# Expo only draws its QR when stdout is a terminal. We deliberately background
+# `expo start` with its output redirected to a log file, so it never draws one —
+# render it here from the same exp:// URL Expo Go expects.
+#
+# qrcode-terminal comes in with @expo/cli, so this adds no dependency of its own.
+print_qr() {
+  local url="$1"
+  local module="$ROOT/node_modules/qrcode-terminal"
+
+  if [[ ! -d "$module" ]]; then
+    note "  (run 'npm install' to render the QR here)"
+    return 0
+  fi
+
+  node -e '
+    const qr = require(process.argv[1]);
+    // `small` uses half-block characters, which keeps the code inside 80
+    // columns — the full-size one wraps and stops scanning.
+    qr.generate(process.argv[2], { small: true }, (out) => process.stdout.write(out));
+  ' "$module" "$url" 2>/dev/null || note "  (couldn't render the QR — open $url manually)"
+}
+
 wait_for_port() {
   local port="$1" label="$2" logfile="$3"
   for _ in $(seq 1 120); do
@@ -170,8 +208,9 @@ cmd_restart() {
 }
 
 cmd_status() {
-  local lan
-  lan="$(ipconfig getifaddr en0 2>/dev/null || echo localhost)"
+  local lan_addr lan
+  lan_addr="$(lan_ip || true)"
+  lan="${lan_addr:-localhost}"
 
   log ""
   if port_busy "$API_PORT"; then
@@ -186,10 +225,41 @@ cmd_status() {
   fi
   pg_isready -q 2>/dev/null && ok "  db    up" || err "  db    down"
 
+  port_busy "$EXPO_PORT" && cmd_qr
+
   note ""
   note "  task logs    follow output      task stop    stop everything"
-  note "  Scan the Expo QR from .dev/app.log, or open http://localhost:$EXPO_PORT"
+  note "  task qr      show the QR again  open http://localhost:$EXPO_PORT for web"
   log ""
+}
+
+cmd_qr() {
+  local lan_addr
+  lan_addr="$(lan_ip || true)"
+
+  if ! port_busy "$EXPO_PORT"; then
+    err "Expo isn't running on port $EXPO_PORT — run 'task start' first."
+    return 1
+  fi
+
+  # No LAN address means no phone can reach this machine, so a QR would encode
+  # an unreachable host and fail silently in Expo Go. Say why instead.
+  if [[ -z "$lan_addr" ]]; then
+    log ""
+    err "  No LAN address found, so there's nothing a phone could scan."
+    note "  Join a Wi-Fi network, or open http://localhost:$EXPO_PORT in a browser."
+    return 0
+  fi
+
+  # Expo Go's LAN URL. A custom dev build would instead want
+  # hoopswitch://expo-development-client/?url=http://HOST:PORT — switch this if
+  # expo-dev-client ever lands in package.json.
+  local url="exp://$lan_addr:$EXPO_PORT"
+
+  log ""
+  note "  Scan with Expo Go — $url"
+  log ""
+  print_qr "$url"
 }
 
 cmd_logs() {
@@ -206,10 +276,11 @@ case "${1:-start}" in
   stop)    cmd_stop ;;
   restart) cmd_restart ;;
   status)  cmd_status ;;
+  qr)      cmd_qr ;;
   logs)    cmd_logs ;;
   *)
     err "Unknown command: $1"
-    note "Usage: ./scripts/dev.sh [start|stop|restart|status|logs]"
+    note "Usage: ./scripts/dev.sh [start|stop|restart|status|qr|logs]"
     exit 1
     ;;
 esac
