@@ -1,24 +1,35 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View } from 'react-native';
+import { AuthScaffold, OrDivider } from '../../components/AuthScaffold';
+import { Button } from '../../components/Button';
+import { InlineError } from '../../components/ScreenState';
+import { Segmented } from '../../components/Segmented';
+import { FieldLabel, TextField } from '../../components/TextField';
+import { Touchable } from '../../components/Touchable';
 import type { UserRole } from '../../lib/api';
 import { useSession } from '../../lib/session';
 import { errorMessage } from '../../lib/useApi';
+
+const ROLE_SEGMENTS = [
+  { value: 'player' as UserRole, label: 'Player', icon: 'basketball-outline' as const },
+  { value: 'coach' as UserRole, label: 'Coach', icon: 'clipboard-outline' as const },
+];
+
+type FieldErrors = {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
 
 export default function SignUpScreen() {
   const { signUp } = useSession();
   const params = useLocalSearchParams<{ role?: string }>();
 
-  const initialRole: UserRole =
-    params.role === 'coach' ? 'coach' : 'player';
+  // Seeded from the role confirmed on the welcome screen, but still changeable —
+  // this is the last point before the account exists.
+  const initialRole: UserRole = params.role === 'coach' ? 'coach' : 'player';
 
   const [role, setRole] = useState<UserRole>(initialRole);
   const [fullName, setFullName] = useState('');
@@ -27,29 +38,23 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   async function handleCreateAccount() {
     setError('');
 
-    if (!fullName.trim()) {
-      setError('Enter your full name.');
-      return;
+    // Validate everything at once and pin each message to its own field, rather
+    // than surfacing one error at a time at the top of the form.
+    const next: FieldErrors = {};
+    if (!fullName.trim()) next.fullName = 'Enter your full name.';
+    if (!email.trim()) next.email = 'Enter your email address.';
+    if (password.length < 6) next.password = 'Use at least 6 characters.';
+    if (password && password !== confirmPassword) {
+      next.confirmPassword = "Passwords don't match.";
     }
 
-    if (!email.trim()) {
-      setError('Enter your email.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) return;
 
     try {
       setLoading(true);
@@ -73,127 +78,109 @@ export default function SignUpScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
-      <View className="flex-1 px-5 pt-5">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-10 w-10 justify-center"
-        >
-          <Ionicons name="arrow-back" size={22} color="#141518" />
-        </Pressable>
-
-        <Text className="font-display mt-4 text-[27px] text-ink">
-          Create your account
-        </Text>
-
-        <Text className="font-sans mt-1 text-[12px] text-slate">
-          Choose your role
-        </Text>
-
-        <View className="mt-4 flex-row gap-3">
-          <Pressable
-            onPress={() => setRole('player')}
-            className={`flex-1 rounded-btn py-4 ${
-              role === 'player' ? 'bg-primary' : 'bg-bg'
-            }`}
-          >
-            <Text
-              className={`font-sans-semibold text-center text-[13px] ${
-                role === 'player' ? 'text-white' : 'text-ink'
-              }`}
-            >
-              Player
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setRole('coach')}
-            className={`flex-1 rounded-btn py-4 ${
-              role === 'coach' ? 'bg-primary' : 'bg-bg'
-            }`}
-          >
-            <Text
-              className={`font-sans-semibold text-center text-[13px] ${
-                role === 'coach' ? 'text-white' : 'text-ink'
-              }`}
-            >
-              Coach
-            </Text>
-          </Pressable>
-        </View>
-
-        <Text className="font-sans-semibold mt-5 text-[11px] text-ink">
-          Full Name
-        </Text>
-
-        <TextInput
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder="Enter your full name"
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[13px] text-ink"
-        />
-
-        <Text className="font-sans-semibold mt-4 text-[11px] text-ink">
-          Email
-        </Text>
-
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[13px] text-ink"
-        />
-
-        <Text className="font-sans-semibold mt-4 text-[11px] text-ink">
-          Password
-        </Text>
-
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          secureTextEntry
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[13px] text-ink"
-        />
-
-        <Text className="font-sans-semibold mt-4 text-[11px] text-ink">
-          Confirm Password
-        </Text>
-
-        <TextInput
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          placeholder="••••••••"
-          secureTextEntry
-          className="font-sans mt-2 rounded-btn border border-border bg-bg px-4 py-4 text-[13px] text-ink"
-        />
-
-        {error ? (
-          <Text className="font-sans mt-3 text-[11px] text-red-600">
-            {error}
-          </Text>
-        ) : null}
-
-        <Pressable
+    <AuthScaffold
+      eyebrow="Create account"
+      title="Set up your account"
+      subtitle={
+        role === 'player'
+          ? "Next you'll build your profile — that's what gets scored against openings."
+          : "Next you'll set up your team so candidates can be ranked against your slots."
+      }
+      footer={
+        <Button
+          label="Create account"
+          size="lg"
+          loading={loading}
           onPress={handleCreateAccount}
-          disabled={loading}
-          className="mt-5 items-center rounded-btn bg-primary py-4"
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="font-sans-semibold text-[13px] text-white">
-              Create Account
-            </Text>
-          )}
-        </Pressable>
+        />
+      }>
+      {error ? <InlineError message={error} /> : null}
 
-        <Text className="font-sans mt-3 text-[10px] text-slate">
-          I agree to the Terms & Conditions
-        </Text>
+      <View className="mb-5">
+        <FieldLabel label="I am a" required />
+        <Segmented segments={ROLE_SEGMENTS} value={role} onChange={setRole} className="mt-2" />
       </View>
-    </SafeAreaView>
+
+      <TextField
+        label="Full name"
+        required
+        value={fullName}
+        onChangeText={setFullName}
+        placeholder="Jordan Davis"
+        icon="person-outline"
+        autoCapitalize="words"
+        autoComplete="name"
+        textContentType="name"
+        error={fieldErrors.fullName ?? null}
+      />
+
+      <TextField
+        label="Email"
+        required
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
+        icon="mail-outline"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        error={fieldErrors.email ?? null}
+      />
+
+      <TextField
+        label="Password"
+        required
+        helper="At least 6 characters."
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Create a password"
+        icon="lock-closed-outline"
+        secure
+        autoCapitalize="none"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        error={fieldErrors.password ?? null}
+      />
+
+      <TextField
+        label="Confirm password"
+        required
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        placeholder="Re-enter your password"
+        icon="lock-closed-outline"
+        secure
+        autoCapitalize="none"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="go"
+        onSubmitEditing={handleCreateAccount}
+        error={fieldErrors.confirmPassword ?? null}
+      />
+
+      <Text className="font-sans text-center text-[11px] leading-[16px] text-slate">
+        By creating an account you agree to our{' '}
+        <Text className="font-sans-semibold text-slate underline">Terms of Service</Text> and{' '}
+        <Text className="font-sans-semibold text-slate underline">Privacy Policy</Text>.
+      </Text>
+
+      <OrDivider />
+
+      <View className="items-center">
+        <Touchable
+          onPress={() => router.replace('/auth/sign-in')}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in instead"
+          scaleTo={1}
+          dimTo={0.6}
+          className="h-11 justify-center">
+          <Text className="font-sans text-[13px] text-slate">
+            Already have an account?{' '}
+            <Text className="font-sans-bold text-primary">Sign in</Text>
+          </Text>
+        </Touchable>
+      </View>
+    </AuthScaffold>
   );
 }

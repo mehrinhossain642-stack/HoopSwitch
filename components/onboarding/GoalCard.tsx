@@ -1,14 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { PlayerGoal } from '../../lib/api';
-import { COLORS } from '../../lib/theme';
+import { Touchable } from '../Touchable';
 
 export type GoalOption = {
   key: PlayerGoal;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
-  /** Per-goal accent, matching the coloured glyphs in the mock. */
+  /** Per-goal accent, so the list scans as five distinct options. */
   tint: string;
 };
 
@@ -50,42 +50,48 @@ export const GOAL_OPTIONS: readonly GoalOption[] = [
   },
 ];
 
-type GoalCardProps = {
+/** Multi-select goal row: tinted icon tile, title/subtitle, trailing checkbox. */
+export function GoalCard({
+  option,
+  selected,
+  onToggle,
+}: {
   option: GoalOption;
   selected: boolean;
   onToggle: () => void;
-};
-
-/** Multi-select goal row: tinted icon, title/subtitle, trailing checkbox. */
-export function GoalCard({ option, selected, onToggle }: GoalCardProps) {
+}) {
   return (
-    <Pressable
+    <Touchable
       onPress={onToggle}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
-      className={`mb-2.5 flex-row items-center rounded-card border px-3.5 py-3.5 ${
-        selected ? 'border-primary bg-primary/5' : 'border-border bg-surface'
-      }`}
-      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+      accessibilityLabel={`${option.title}. ${option.subtitle}`}
+      scaleTo={0.985}
+      // Both states carry border-2, so selecting can't shift the row by a pixel.
+      className={`mb-2.5 flex-row items-center rounded-card border-2 ${
+        selected ? 'border-primary bg-primary-soft' : 'border-border bg-surface'
+      } px-3.5 py-3.5`}>
       <View
-        className="h-9 w-9 items-center justify-center rounded-full"
-        style={{ backgroundColor: `${option.tint}1A` }}>
-        <Ionicons name={option.icon} size={18} color={option.tint} />
+        className="h-10 w-10 items-center justify-center rounded-md"
+        style={{ backgroundColor: `${option.tint}1F` }}>
+        <Ionicons name={option.icon} size={19} color={option.tint} />
       </View>
 
-      <View className="ml-3 flex-1">
-        <Text className="font-sans-semibold text-[14px] text-ink">{option.title}</Text>
+      <View className="ml-3.5 flex-1">
+        <Text className="font-sans-semibold text-[14px] leading-[19px] text-ink">
+          {option.title}
+        </Text>
         <Text className="font-sans mt-0.5 text-[12px] leading-[16px] text-slate">
           {option.subtitle}
         </Text>
       </View>
 
       <View
-        className={`ml-2 h-[22px] w-[22px] items-center justify-center rounded-md border ${
-          selected ? 'border-primary bg-primary' : 'border-border bg-surface'
+        className={`ml-2.5 h-[24px] w-[24px] items-center justify-center rounded-badge border ${
+          selected ? 'border-primary bg-primary' : 'border-border-strong bg-surface'
         }`}>
-        {selected ? <Ionicons name="checkmark" size={14} color={COLORS.surface} /> : null}
+        {selected ? <Ionicons name="checkmark" size={15} color="#FFFFFF" /> : null}
       </View>
-    </Pressable>
+    </Touchable>
   );
 }

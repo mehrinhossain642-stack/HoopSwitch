@@ -1,21 +1,32 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, Text, View } from 'react-native';
+import { DetailHeader } from '../../../components/AppHeader';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
-import { MatchChip } from '../../../components/MatchChip';
+import { FitScore } from '../../../components/FitScore';
+import { Meter } from '../../../components/Meter';
 import { PositionBadge } from '../../../components/PositionBadge';
-import { InlineError, ScreenError, ScreenLoading } from '../../../components/ScreenState';
+import { Screen, useContentContainerStyle } from '../../../components/Screen';
+import {
+  EmptyState,
+  InlineError,
+  ScreenError,
+  ScreenLoading,
+} from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
-import { SpecRow } from '../../../components/SpecRow';
-import { StatBlock } from '../../../components/StatBlock';
+import { SpecStrip, StatStrip } from '../../../components/StatStrip';
 import { StatusPill } from '../../../components/StatusPill';
+import {
+  STICKY_BAR_CLEARANCE,
+  StickyActionBar,
+} from '../../../components/StickyActionBar';
 import * as api from '../../../lib/api';
 import { useSession } from '../../../lib/session';
-import { COLORS } from '../../../lib/theme';
+import { useTierColors, useThemeColors } from '../../../lib/theme';
+import { relativeTime } from '../../../lib/time';
 import { errorMessage, useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbs } from '../../../lib/units';
 
@@ -28,27 +39,36 @@ const COMPONENT_LABELS = {
 
 /**
  * Posting detail — the full slot spec plus the server's score breakdown.
- * There is no GET /postings/:id in the MVP surface, so this reads the scored
- * feed and picks the row, which keeps the score authoritative.
+ * There is no GET /postings/:id in the MVP surface, so this reads the scored feed
+ * and picks the row, which keeps the score authoritative.
  */
 export default function PostingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { requireToken, token } = useSession();
+  const colors = useThemeColors();
+  const contentStyle = useContentContainerStyle({
+    paddingTop: 16,
+    paddingBottom: STICKY_BAR_CLEARANCE,
+  });
 
   const feed = useApiData(() => api.getPostingFeed(requireToken()), [token]);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
 
   const posting = feed.data?.postings.find((item) => String(item.id) === String(id));
 
   const apply = useCallback(async () => {
     if (!posting || posting.connected) return;
     setApplyError(null);
+    setApplying(true);
     try {
       await api.createConnection(requireToken(), posting.id);
       feed.refetch();
     } catch (caught) {
       setApplyError(errorMessage(caught));
+    } finally {
+      setApplying(false);
     }
   }, [posting, requireToken, feed]);
 
@@ -59,16 +79,25 @@ export default function PostingDetail() {
 
   if (!posting) {
     return (
-      <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
+      <Screen edges={[]}>
         <DetailHeader onBack={() => router.back()} title="Roster spot" />
-        <View className="flex-1 items-center justify-center px-8">
-          <Ionicons name="alert-circle-outline" size={28} color={COLORS.slate} />
-          <Text className="font-display mt-3 text-[17px] text-ink">Spot not found</Text>
-          <Text className="font-sans mt-1 text-center text-[13px] text-slate">
-            This posting is no longer in the feed.
-          </Text>
+        <View className="flex-1 justify-center" style={contentStyle}>
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Spot not found"
+            body="This posting is no longer in your feed — it may have been filled or closed."
+            action={
+              <Button
+                label="Back to openings"
+                variant="secondary"
+                size="sm"
+                fullWidth={false}
+                onPress={() => router.back()}
+              />
+            }
+          />
         </View>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -76,137 +105,150 @@ export default function PostingDetail() {
   const team = posting.team;
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
-      <DetailHeader onBack={() => router.back()} title="Roster spot" />
+    <Screen edges={[]}>
+      <DetailHeader
+        onBack={() => router.back()}
+        title="Roster spot"
+        right={<StatusPill status={posting.status} onDark />}
+      />
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}>
-        {applyError ? <InlineError message={applyError} /> : null}
+      <ScrollView contentContainerStyle={contentStyle}>
+        {applyError ? <InlineError message={applyError} onRetry={apply} /> : null}
 
-        <Card>
-          <View className="flex-row items-center">
-            <Avatar name={team?.name ?? 'Team'} size={48} shape="square" />
-            <View className="ml-3 flex-1">
-              <Text className="font-display text-[18px] text-ink">{team?.name}</Text>
-              <Text className="font-sans mt-0.5 text-[12px] text-slate">
-                {[team?.league, team?.location].filter(Boolean).join(' · ')}
+        <Card bare>
+          <View className="p-4">
+            <View className="flex-row items-center">
+              <Avatar name={team?.name ?? 'Team'} size={48} shape="square" />
+              <View className="ml-3.5 flex-1">
+                <Text className="font-display text-[18px] text-ink" numberOfLines={2}>
+                  {team?.name}
+                </Text>
+                <Text className="font-sans mt-0.5 text-[12px] text-slate">
+                  {[team?.league, team?.location].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mt-4 flex-row items-start">
+              <PositionBadge position={posting.position} tone="dark" size="lg" />
+              <Text
+                className="font-display ml-3 flex-1 text-[20px] leading-[26px] text-ink"
+                style={{ letterSpacing: -0.3 }}>
+                {posting.headline}
               </Text>
             </View>
-            <StatusPill status={posting.status} />
-          </View>
 
-          <View className="mt-4 flex-row items-center">
-            <PositionBadge position={posting.position} variant="dark" />
-            <Text className="font-display ml-2 flex-1 text-[19px] leading-[25px] text-ink">
-              {posting.headline}
+            <Text className="font-sans mt-2 text-[12px] text-slate">
+              Posted {relativeTime(posting.created_at)} · {posting.applicant_count} applied
             </Text>
           </View>
 
-          {match ? (
-            <View className="mt-4">
-              <MatchChip score={match.score} tier={match.tier} reason={match.reason} />
-            </View>
-          ) : null}
-
-          <View className="mt-4 w-full flex-row border-t border-border pt-4">
-            <StatBlock value={team?.record ?? '—'} label="RECORD" />
-            <StatBlock value={team?.roster_size ?? 0} label="ROSTER" />
-            <StatBlock value={posting.applicant_count} label="APPLIED" />
-          </View>
+          <StatStrip
+            tone="plain"
+            className="border-t border-border"
+            stats={[
+              { value: team?.record ?? '—', label: 'Record' },
+              { value: team?.roster_size ?? 0, label: 'Roster' },
+              { value: posting.applicant_count, label: 'Applied' },
+            ]}
+          />
         </Card>
 
-        <View className="mt-4">
-          <SectionTitle title="What they want" className="mb-3" />
-          <Card>
-            <SpecRow
-              specs={[
-                { label: 'Ideal ht', value: `${cmToFeetInches(posting.ideal_height_cm)}+` },
-                { label: 'Ideal wt', value: `${kgToLbs(posting.ideal_weight_kg)}+ lbs` },
-                { label: 'Minutes', value: `${posting.expected_minutes} MPG` },
-              ]}
-            />
-            <Text className="font-sans mt-3 text-[14px] leading-[20px] text-slate">
-              {posting.notes}
-            </Text>
-          </Card>
-        </View>
-
+        {/* Fit is the reason this screen exists, so it gets its own panel above the
+            requirements rather than a chip somewhere in the middle. */}
         {match ? (
-          <View className="mt-5">
-            <SectionTitle title="Why this score" className="mb-3" />
+          <>
+            <SectionTitle title="Your fit" className="mb-2.5 mt-6" />
             <Card>
-              {(['position', 'height', 'weight', 'production'] as const).map(
-                (component, index) => (
-                  <ScoreBar
-                    key={component}
-                    label={COMPONENT_LABELS[component]}
-                    value={match.breakdown[component]}
-                    last={index === 3}
-                  />
-                )
-              )}
+              <FitScore
+                variant="hero"
+                score={match.score}
+                tier={match.tier}
+                reason={match.reason}
+              />
+
+              <View className="mt-5 border-t border-border pt-4">
+                <Text className="font-stat mb-3 text-[14px] tracking-eyebrow text-slate">
+                  SCORE BREAKDOWN
+                </Text>
+                {(['position', 'height', 'weight', 'production'] as const).map(
+                  (component, index) => (
+                    <ScoreRow
+                      key={component}
+                      label={COMPONENT_LABELS[component]}
+                      value={match.breakdown[component]}
+                      last={index === 3}
+                    />
+                  )
+                )}
+              </View>
             </Card>
-          </View>
+          </>
         ) : null}
 
-        <View className="mt-5">
-          <SectionTitle title="About the program" className="mb-3" />
-          <Card>
-            <Text className="font-sans text-[14px] leading-[20px] text-slate">{team?.about}</Text>
-            <Text className="font-sans-medium mt-3 text-[13px] text-ink">
-              Head Coach · {team?.coach_name}
-            </Text>
-          </Card>
-        </View>
-
-        <View className="mt-6">
-          <Button
-            label="Apply to this spot"
-            doneLabel="Applied — coach notified"
-            done={posting.connected === true}
-            onPress={apply}
+        <SectionTitle title="What they want" className="mb-2.5 mt-6" />
+        <Card>
+          <SpecStrip
+            specs={[
+              { label: 'Ideal ht', value: `${cmToFeetInches(posting.ideal_height_cm)}+` },
+              { label: 'Ideal wt', value: `${kgToLbs(posting.ideal_weight_kg)}+ lbs` },
+              { label: 'Minutes', value: `${posting.expected_minutes} MPG` },
+            ]}
           />
-        </View>
+          <Text className="font-sans mt-3.5 text-[14px] leading-[21px] text-slate">
+            {posting.notes}
+          </Text>
+        </Card>
+
+        <SectionTitle title="About the program" className="mb-2.5 mt-6" />
+        <Card>
+          <Text className="font-sans text-[14px] leading-[21px] text-slate">{team?.about}</Text>
+          <View className="mt-3.5 flex-row items-center border-t border-border pt-3.5">
+            <Ionicons name="person-outline" size={15} color={colors.slate} />
+            <Text className="font-sans-medium ml-2 text-[13px] text-ink">
+              Head coach · {team?.coach_name}
+            </Text>
+          </View>
+        </Card>
       </ScrollView>
-    </SafeAreaView>
+
+      <StickyActionBar>
+        <View className="mr-3 flex-1">
+          {match ? <FitScore score={match.score} tier={match.tier} /> : null}
+        </View>
+        <Button
+          label="Apply to this spot"
+          doneLabel="Applied"
+          done={posting.connected === true}
+          loading={applying}
+          onPress={apply}
+          fullWidth={false}
+          className="w-[170px]"
+        />
+      </StickyActionBar>
+    </Screen>
   );
 }
 
-function DetailHeader({ onBack, title }: { onBack: () => void; title: string }) {
-  return (
-    <View className="flex-row items-center px-5 py-3">
-      <Pressable
-        onPress={onBack}
-        hitSlop={10}
-        className="h-9 w-9 items-center justify-center rounded-full border border-border bg-surface"
-        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-        <Ionicons name="chevron-back" size={18} color={COLORS.ink} />
-      </Pressable>
-      <Text className="font-sans-semibold ml-3 text-[12px] uppercase tracking-widest text-slate">
-        {title}
-      </Text>
-    </View>
-  );
-}
-
-/** Horizontal 0–1 meter for one match component. */
-function ScoreBar({ label, value, last }: { label: string; value: number; last: boolean }) {
+/** One component of the server's score, as a labelled bar. */
+function ScoreRow({ label, value, last }: { label: string; value: number; last: boolean }) {
+  const colors = useThemeColors();
+  const tiers = useTierColors();
   const pct = Math.round(value * 100);
-  const tone = value >= 0.78 ? COLORS.good : value >= 0.4 ? COLORS.partial : COLORS.primary;
+  // Thresholds mirror the server's own tiering, so a row's colour agrees with the
+  // headline score.
+  const tone =
+    value >= 0.78 ? tiers.color('good') : value >= 0.4 ? tiers.color('partial') : colors.danger;
 
   return (
     <View className={last ? '' : 'mb-3.5'}>
       <View className="mb-1.5 flex-row items-center justify-between">
         <Text className="font-sans-medium text-[13px] text-ink">{label}</Text>
-        <Text className="font-sans-bold text-[13px]" style={{ color: tone }}>
+        <Text className="font-stat-bold text-[18px] tracking-stat" style={{ color: tone }}>
           {pct}%
         </Text>
       </View>
-      <View className="h-1.5 overflow-hidden rounded-full bg-bg">
-        <View
-          className="h-full rounded-full"
-          style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: tone }}
-        />
-      </View>
+      <Meter value={value} color={tone} />
     </View>
   );
 }

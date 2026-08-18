@@ -1,25 +1,30 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar } from '../../../components/Avatar';
+import { ScrollView, Text, View } from 'react-native';
 import { Card } from '../../../components/Card';
 import { EditableField } from '../../../components/EditableField';
 import { PositionBadge } from '../../../components/PositionBadge';
+import { ProfileHero } from '../../../components/ProfileHero';
+import { Screen, useContentContainerStyle } from '../../../components/Screen';
 import { ScreenError, ScreenLoading } from '../../../components/ScreenState';
 import { SectionTitle } from '../../../components/SectionTitle';
-import { StatBlock } from '../../../components/StatBlock';
-import { DotPill, StatusPill } from '../../../components/StatusPill';
-import { SignOutSection } from '../../../components/SignOutSection';
+import { SettingsButton } from '../../../components/SettingsButton';
+import { DotPill, StatusPill, useStatusRail } from '../../../components/StatusPill';
+import { Touchable } from '../../../components/Touchable';
 import type { Position, PostingStatus } from '../../../data/types';
 import * as api from '../../../lib/api';
 import type { ApiPosting, PostingPatch } from '../../../lib/api';
 import { POSITION_LABEL, roleLabel } from '../../../lib/labels';
 import { useSession } from '../../../lib/session';
-import { COLORS } from '../../../lib/theme';
+import { useThemeColors } from '../../../lib/theme';
 import { relativeTime } from '../../../lib/time';
 import { useApiData } from '../../../lib/useApi';
-import { cmToFeetInches, kgToLbsLabel, parseHeightToCm, parseLbsToKg } from '../../../lib/units';
+import {
+  cmToFeetInches,
+  kgToLbsLabel,
+  parseHeightToCm,
+  parseLbsToKg,
+} from '../../../lib/units';
 
 const POSITIONS: readonly Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 const STATUS_OPTIONS: readonly PostingStatus[] = ['open', 'in_review', 'closed'];
@@ -32,6 +37,8 @@ const STATUS_LABELS: Record<PostingStatus, string> = {
 /** Coach Profile — own view. Slot edits PATCH the API and re-score the feed. */
 export default function CoachProfile() {
   const { requireToken, token } = useSession();
+  const colors = useThemeColors();
+  const contentStyle = useContentContainerStyle({ paddingTop: 20 });
   const team = useApiData(() => api.getTeam(requireToken()), [token]);
   const { data, refetch } = team;
 
@@ -51,45 +58,35 @@ export default function CoachProfile() {
   const openSlots = data.open_slots_count ?? 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top']}>
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
-        keyboardShouldPersistTaps="handled">
-        <View className="py-3">
-          <Text className="font-sans-semibold text-[12px] uppercase tracking-widest text-slate">
-            Team profile
-          </Text>
-        </View>
+    <Screen edges={[]}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ProfileHero
+          eyebrow="Team profile"
+          name={data.name}
+          avatarShape="square"
+          meta={[data.league, data.location].filter(Boolean).join(' · ')}
+          submeta={`Head coach · ${data.coach_name}`}
+          pill={
+            <DotPill
+              label={`Recruiting — ${openSlots} open slot${openSlots === 1 ? '' : 's'}`}
+              tone="onDark"
+            />
+          }
+          action={<SettingsButton href="/coach/settings" />}
+          stats={[
+            { value: data.record, label: 'Record' },
+            { value: data.roster_size, label: 'Roster' },
+            { value: postings.length, label: 'Slots' },
+          ]}
+        />
 
-        {/* Hero */}
-        <Card className="items-center pb-5 pt-6">
-          <Avatar name={data.name} size={84} shape="square" />
-          <Text className="font-display mt-4 text-[24px] text-ink">{data.name}</Text>
-          <Text className="font-sans mt-1 text-[13px] text-slate">
-            {[data.league, data.location].filter(Boolean).join(' · ')}
-          </Text>
-          <Text className="font-sans-semibold mt-1 text-[13px] text-ink">
-            Head Coach · {data.coach_name}
-          </Text>
-          <View className="mt-3">
-            <DotPill label={`Recruiting — ${openSlots} open slot${openSlots === 1 ? '' : 's'}`} />
-          </View>
-
-          <View className="mt-5 w-full flex-row border-t border-border pt-4">
-            <StatBlock value={data.record} label="RECORD" />
-            <StatBlock value={data.roster_size} label="ROSTER" />
-            <StatBlock value={postings.length} label="SLOTS" />
-          </View>
-        </Card>
-
-        {/* Open roster slots */}
-        <View className="mt-5">
+        <View style={contentStyle}>
           <SectionTitle
-            title="Open Roster Slots"
+            title="Roster slots"
             className="mb-3"
             action={
-              <Text className="font-sans-semibold text-[12px] text-slate">
-                {postings.length} total
+              <Text className="font-stat text-[14px] tracking-eyebrow text-slate">
+                {postings.length} TOTAL
               </Text>
             }
           />
@@ -102,7 +99,7 @@ export default function CoachProfile() {
             />
           ))}
 
-          <Pressable
+          <Touchable
             onPress={() => {
               api
                 .createPosting(requireToken(), {
@@ -117,25 +114,26 @@ export default function CoachProfile() {
                 .then(refetch)
                 .catch(refetch);
             }}
-            className="mt-1 items-center rounded-card border border-dashed border-border bg-surface px-6 py-6"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-            <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} />
-            <Text className="font-sans-bold mt-1.5 text-[14px] text-primary">
-              Post a new slot
+            accessibilityRole="button"
+            accessibilityLabel="Post a new roster slot"
+            scaleTo={0.99}
+            className="items-center rounded-card border border-dashed border-border-strong bg-surface px-6 py-6">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-primary-soft">
+              <Ionicons name="add" size={22} color={colors.primary} />
+            </View>
+            <Text className="font-display mt-2.5 text-[15px] text-ink">Post a new slot</Text>
+            <Text className="font-sans mt-1 text-center text-[12px] leading-[17px] text-slate">
+              Adds an editable opening, and every player gets ranked against it.
             </Text>
-            <Text className="font-sans mt-0.5 text-center text-[12px] text-slate">
-              Adds an editable opening to your talent feed
-            </Text>
-          </Pressable>
-        </View>
+          </Touchable>
 
-        {/* About the program */}
-        <View className="mt-5">
+          <SectionTitle title="About the program" className="mb-2.5 mt-6" />
           <Card>
             <EditableField
-              label="About the program"
+              label="Program overview"
               value={data.about ?? ''}
               multiline
+              hint="Write at least a sentence so players know what they'd be joining."
               onCommit={(next) => {
                 const trimmed = next.trim();
                 if (trimmed.length === 0) return false;
@@ -144,34 +142,43 @@ export default function CoachProfile() {
               }}
             />
           </Card>
-        </View>
 
-        <SignOutSection />
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-type SlotCardProps = {
+/** One editable posting. Every commit PATCHes /postings/:id. */
+function SlotCard({
+  posting,
+  onUpdate,
+}: {
   posting: ApiPosting;
   onUpdate: (patch: PostingPatch) => boolean;
-};
+}) {
+  const colors = useThemeColors();
+  // Rail colour encodes the slot's status down the left edge of its card.
+  const rail = useStatusRail();
 
-/** One editable posting. Every commit PATCHes /postings/:id. */
-function SlotCard({ posting, onUpdate }: SlotCardProps) {
   return (
-    <Card className="mb-3" bare>
+    <Card bare rail={rail[posting.status]} className="mb-3">
       <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-        <View className="flex-row items-center">
-          <PositionBadge position={posting.position} variant="dark" />
-          <Text className="font-display ml-2.5 text-[15px] text-ink">
-            {roleLabel(posting.position, posting.expected_minutes)}
-          </Text>
+        <View className="flex-1 flex-row items-center">
+          <PositionBadge position={posting.position} tone="dark" />
+          <View className="ml-3 flex-1">
+            <Text className="font-display text-[15px] text-ink" numberOfLines={1}>
+              {roleLabel(posting.position, posting.expected_minutes)}
+            </Text>
+            <Text className="font-sans mt-0.5 text-[11px] text-slate">
+              {POSITION_LABEL[posting.position]} · posted {relativeTime(posting.created_at)}
+            </Text>
+          </View>
         </View>
         <StatusPill status={posting.status} />
       </View>
 
-      <View className="px-4 pb-1 pt-1">
+      <View className="px-4">
         <EditableField
           label="Position"
           value={posting.position}
@@ -179,10 +186,11 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           onCommit={(next) => onUpdate({ position: next as Position })}
         />
         <EditableField
-          label="Ideal Height"
+          label="Ideal height"
           value={cmToFeetInches(posting.ideal_height_cm)}
           editSeed={cmToFeetInches(posting.ideal_height_cm).replace(/"/g, '')}
           keyboardType="numbers-and-punctuation"
+          hint="Enter a height between 4'11&quot; and 7'10&quot;."
           onCommit={(next) => {
             const cm = parseHeightToCm(next);
             if (cm === null || cm < 150 || cm > 240) return false;
@@ -190,10 +198,11 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           }}
         />
         <EditableField
-          label="Ideal Weight"
+          label="Ideal weight"
           value={kgToLbsLabel(posting.ideal_weight_kg)}
           editSeed={String(Math.round(posting.ideal_weight_kg * 2.20462))}
           keyboardType="number-pad"
+          hint="Enter a weight in pounds between 110 and 397."
           onCommit={(next) => {
             const kg = parseLbsToKg(next);
             if (kg === null || kg < 50 || kg > 180) return false;
@@ -201,9 +210,11 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
           }}
         />
         <EditableField
-          label="Expected MPG"
-          value={String(posting.expected_minutes)}
+          label="Expected minutes"
+          value={`${posting.expected_minutes} MPG`}
+          editSeed={String(posting.expected_minutes)}
           keyboardType="number-pad"
+          hint="Enter minutes per game between 1 and 40."
           onCommit={(next) => {
             const minutes = Number(next.trim());
             if (!Number.isFinite(minutes) || minutes < 1 || minutes > 40) return false;
@@ -223,16 +234,14 @@ function SlotCard({ posting, onUpdate }: SlotCardProps) {
         />
       </View>
 
-      <View className="flex-row items-center justify-between border-t border-border px-4 py-3">
-        <Text className="font-sans text-[12px] text-slate">
-          {POSITION_LABEL[posting.position]} · posted {relativeTime(posting.created_at)}
-        </Text>
+      <View className="flex-row items-center justify-between border-t border-border bg-bg px-4 py-3">
         <View className="flex-row items-center">
-          <Ionicons name="people-outline" size={14} color={COLORS.slate} />
-          <Text className="font-sans-semibold ml-1.5 text-[12px] text-ink">
-            {posting.applicant_count} applicants
-          </Text>
+          <Ionicons name="people-outline" size={15} color={colors.slate} />
+          <Text className="font-sans ml-2 text-[12px] text-slate">Applicants</Text>
         </View>
+        <Text className="font-stat-bold text-[21px] tracking-stat text-ink">
+          {posting.applicant_count}
+        </Text>
       </View>
     </Card>
   );

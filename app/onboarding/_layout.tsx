@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { COLORS } from '../../lib/theme';
+import { useThemeColors } from '../../lib/theme';
 
 /**
  * "Create your profile" — a 4-step flow shown once, after signup and before the
@@ -7,11 +7,13 @@ import { COLORS } from '../../lib/theme';
  * saved and the flow resumes where the player left off.
  */
 export default function OnboardingLayout() {
+  const colors = useThemeColors();
+
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: COLORS.surface },
+        contentStyle: { backgroundColor: colors.bg },
       }}
     />
   );

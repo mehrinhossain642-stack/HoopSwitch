@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { Button } from '../../components/Button';
+import { Touchable } from '../../components/Touchable';
 import { FormField, Label } from '../../components/onboarding/FormField';
 import { StepScaffold } from '../../components/onboarding/StepScaffold';
 import { ScreenError, ScreenLoading } from '../../components/ScreenState';
@@ -96,7 +98,7 @@ export default function OnboardingHighlights() {
         that does nothing, the tile states the constraint and points at links.
       */}
       <View className="mt-2 items-center rounded-card border border-dashed border-border bg-bg px-6 py-7">
-        <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+        <View className="h-11 w-11 items-center justify-center rounded-full bg-primary-soft">
           <Ionicons name="cloud-upload-outline" size={20} color={COLORS.primary} />
         </View>
         <Text className="font-sans-semibold mt-2.5 text-[13px] text-ink">
@@ -128,27 +130,20 @@ export default function OnboardingHighlights() {
           icon="text-outline"
         />
 
-        <Pressable
+        <Button
+          label={added.length === 0 ? 'Add link' : 'Add another link'}
+          variant="secondary"
+          icon="add"
+          loading={adding}
           onPress={addLink}
-          disabled={adding}
-          className="flex-row items-center justify-center rounded-btn border border-primary bg-surface py-3.5"
-          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
-          {adding ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : (
-            <>
-              <Ionicons name="add" size={17} color={COLORS.primary} />
-              <Text className="font-sans-bold ml-1.5 text-[14px] text-primary">
-                {added.length === 0 ? 'Add link' : 'Add another link'}
-              </Text>
-            </>
-          )}
-        </Pressable>
+        />
       </View>
 
       {added.length > 0 ? (
         <View className="mt-6">
-          <Text className="font-sans-semibold mb-2.5 text-[13px] text-ink">Recently added</Text>
+          <Text className="font-stat mb-2.5 text-[15px] tracking-eyebrow text-slate">
+            {added.length === 1 ? '1 CLIP ADDED' : `${added.length} CLIPS ADDED`}
+          </Text>
           {added.map((highlight) => (
             <HighlightRow key={highlight.id} highlight={highlight} onRemove={() => remove(highlight)} />
           ))}
@@ -174,12 +169,12 @@ function HighlightRow({
 
   return (
     <View className="mb-2.5 flex-row items-center rounded-card border border-border bg-surface p-2.5">
-      <View className="h-[46px] w-[74px] overflow-hidden rounded-lg bg-ink">
+      <View className="h-[46px] w-[80px] overflow-hidden rounded-md bg-chrome">
         {thumbnail ? (
           <Image source={{ uri: thumbnail }} className="h-full w-full" resizeMode="cover" />
         ) : (
           <View className="h-full w-full items-center justify-center">
-            <Ionicons name="videocam-outline" size={16} color={COLORS.surface} />
+            <Ionicons name="videocam-outline" size={16} color={COLORS.chromeTextMuted} />
           </View>
         )}
       </View>
@@ -193,9 +188,15 @@ function HighlightRow({
         </Text>
       </View>
 
-      <Pressable onPress={onRemove} hitSlop={10} accessibilityLabel={`Remove ${highlight.title}`}>
-        <Ionicons name="trash-outline" size={17} color={COLORS.primary} />
-      </Pressable>
+      {/* Destructive action gets the danger colour, not brand orange. */}
+      <Touchable
+        onPress={onRemove}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${highlight.title}`}
+        className="h-9 w-9 items-center justify-center rounded-full bg-danger-soft">
+        <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+      </Touchable>
     </View>
   );
 }

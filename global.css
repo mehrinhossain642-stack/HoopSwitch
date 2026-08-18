@@ -1,3 +1,93 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/**
+ * Semantic colour tokens.
+ *
+ * Declared as space-separated RGB channels rather than hex so Tailwind can wrap
+ * them in `rgb(var(--token) / <alpha-value>)` and opacity modifiers like
+ * `bg-surface/60` keep working.
+ *
+ * Accents live here too, not just surfaces. A pastel tint like #FEEDE8 is right on
+ * white and blinding on near-black, and #DC2626 text doesn't clear 3:1 against a
+ * dark tint — so both the accent and its soft fill have to flip. Routing them
+ * through variables means `bg-primary-soft` and `text-danger` restyle themselves
+ * and no component needs a `dark:` twin.
+ */
+@layer base {
+  :root {
+    /* Page and card surfaces */
+    --bg: 244 245 247;
+    --surface: 255 255 255;
+    --surface-raised: 255 255 255;
+    --mist: 239 241 244;
+
+    /* Lines */
+    --border: 228 230 234;
+    --border-strong: 210 215 222;
+
+    /* Text, in descending emphasis */
+    --text: 20 21 24;
+    --text-muted: 91 97 110;
+    --text-subtle: 138 144 156;
+
+    /* Accents and their soft fills */
+    --primary: 240 78 35;
+    --primary-soft: 254 237 232;
+    --good: 31 169 113;
+    --good-soft: 231 247 240;
+    --partial: 232 163 61;
+    --partial-soft: 253 244 231;
+    --danger: 220 38 38;
+    --danger-soft: 253 236 236;
+
+    /* The dark header slab and nav rail. Deliberately near-constant — the chrome
+       is the brand, so it stays ink in light mode and only deepens in dark. */
+    --chrome: 13 14 17;
+    --chrome-raised: 28 30 35;
+    --chrome-border: 42 45 52;
+    --chrome-text: 255 255 255;
+    --chrome-text-muted: 138 144 156;
+
+    /* Scrim behind modals and sheets. */
+    --scrim: 13 14 17;
+  }
+
+  .dark:root {
+    /* Surfaces get *lighter* with elevation, so a card reads as raised above the
+       page rather than as a hole punched in it. */
+    --bg: 21 22 26;
+    --surface: 30 32 37;
+    --surface-raised: 36 38 44;
+    --mist: 42 45 51;
+
+    --border: 46 49 56;
+    --border-strong: 60 64 72;
+
+    --text: 242 243 245;
+    --text-muted: 163 169 181;
+    --text-subtle: 124 131 145;
+
+    /* Accents lift and desaturate so they hold contrast on a dark surface;
+       the soft fills become dim washes of the same hue instead of pastels. */
+    --primary: 255 116 82;
+    --primary-soft: 58 33 26;
+    --good: 63 210 147;
+    --good-soft: 22 48 42;
+    --partial: 245 190 99;
+    --partial-soft: 56 44 27;
+    --danger: 255 107 107;
+    --danger-soft: 58 31 31;
+
+    /* Still the deepest surface in the app, so the slab keeps reading as chrome
+       against the (lighter) page behind it. */
+    --chrome: 9 10 12;
+    --chrome-raised: 26 28 33;
+    --chrome-border: 44 47 54;
+    --chrome-text: 255 255 255;
+    --chrome-text-muted: 152 158 170;
+
+    --scrim: 0 0 0;
+  }
+}

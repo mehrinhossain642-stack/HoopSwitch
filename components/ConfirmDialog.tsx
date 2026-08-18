@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
-import { COLORS } from '../lib/theme';
+import { SCRIM, useThemeColors } from '../lib/theme';
 
 type ConfirmDialogProps = {
   visible: boolean;
@@ -35,17 +35,18 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const colors = useThemeColors();
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      // Android back button and the browser's Escape both land here.
+      // Android's back button and the browser's Escape both land here.
       onRequestClose={busy ? undefined : onCancel}>
       <Pressable
         className="flex-1 items-center justify-center px-6"
-        // Strong enough scrim that the dialog clearly owns the foreground.
-        style={{ backgroundColor: 'rgba(20,21,24,0.55)' }}
+        style={{ backgroundColor: SCRIM }}
         accessibilityLabel={cancelLabel}
         onPress={busy ? undefined : onCancel}>
         {/* Stops taps inside the dialog from dismissing it. */}
@@ -55,13 +56,10 @@ export function ConfirmDialog({
           accessibilityViewIsModal>
           {icon ? (
             <View
-              className="mb-3.5 h-11 w-11 items-center justify-center rounded-full"
-              style={{ backgroundColor: destructive ? COLORS.dangerSoft : COLORS.bg }}>
-              <Ionicons
-                name={icon}
-                size={21}
-                color={destructive ? COLORS.danger : COLORS.ink}
-              />
+              className={`mb-3.5 h-11 w-11 items-center justify-center rounded-full ${
+                destructive ? 'bg-danger-soft' : 'bg-mist'
+              }`}>
+              <Ionicons name={icon} size={21} color={destructive ? colors.danger : colors.ink} />
             </View>
           ) : null}
 
@@ -77,7 +75,7 @@ export function ConfirmDialog({
               accessibilityRole="button"
               accessibilityLabel={cancelLabel}
               accessibilityState={{ disabled: busy }}
-              className={`mr-2.5 h-11 flex-1 items-center justify-center rounded-btn border border-border bg-surface ${
+              className={`mr-2.5 h-11 flex-1 items-center justify-center rounded-btn border border-border-strong bg-surface ${
                 busy ? 'opacity-40' : ''
               }`}
               style={({ pressed }) => ({ opacity: pressed && !busy ? 0.7 : undefined })}>
@@ -92,16 +90,16 @@ export function ConfirmDialog({
               accessibilityState={{ disabled: busy, busy }}
               // Fill has to come from className, not the style callback:
               // NativeWind drops a `backgroundColor` returned from a style
-              // function, which left this button transparent with white text on
-              // a white card — invisible, but still clickable.
+              // function, which left this button transparent with white text on a
+              // white card — invisible, but still clickable.
               className={`h-11 flex-1 items-center justify-center rounded-btn ${
                 destructive ? 'bg-danger' : 'bg-primary'
               } ${busy ? 'opacity-60' : ''}`}
               style={({ pressed }) => ({ opacity: pressed && !busy ? 0.8 : undefined })}>
               {busy ? (
-                <ActivityIndicator size="small" color={COLORS.surface} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text className="font-sans-bold text-[14px] text-surface">{confirmLabel}</Text>
+                <Text className="font-sans-bold text-[14px] text-white">{confirmLabel}</Text>
               )}
             </Pressable>
           </View>

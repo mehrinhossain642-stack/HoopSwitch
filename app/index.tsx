@@ -1,156 +1,79 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import {
-  Image,
-  ImageBackground,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { IndeterminateBar } from '../components/Meter';
+import { useLayout } from '../lib/layout';
 import { useSession } from '../lib/session';
 
-export default function SplashScreen() {
+/**
+ * Launch screen.
+ *
+ * A real launch screen, not a landing page: it holds the brand while the stored
+ * session is read back, then routes. Signed in goes to the right home (or back
+ * into onboarding if it was abandoned); signed out goes to role selection, where
+ * the "get started vs sign in" choice actually belongs.
+ *
+ * It fills the viewport rather than rendering a fixed-size frame, so it's correct
+ * on a small phone, a tablet and a maximised browser window alike.
+ */
+export default function LaunchScreen() {
   const { user, restoring, landingRoute } = useSession();
+  const { isTablet } = useLayout();
 
-  // A stored session should skip the sign-in gate entirely — otherwise
-  // persisting the JWT buys nothing and every cold start asks for a password.
-  // A player who abandoned onboarding resumes it instead of entering the app.
   useEffect(() => {
-    if (restoring || !user) return;
+    // Nothing to decide until the persisted session has been read.
+    if (restoring) return;
 
     let cancelled = false;
+
+    if (!user) {
+      router.replace('/auth/welcome');
+      return;
+    }
+
     landingRoute().then((route) => {
       if (!cancelled) router.replace(route);
     });
+
     return () => {
       cancelled = true;
     };
   }, [restoring, user, landingRoute]);
 
+  // Scales with the viewport instead of the old hardcoded 62px/27px pair, which
+  // looked lost on a tablet and cramped on a small phone.
+  const markSize = isTablet ? 92 : 76;
+  const wordmarkWidth = isTablet ? 260 : 216;
+
   return (
-    <View className="flex-1 items-center justify-center bg-black">
-      {/* Exact Figma frame: 300 x 650 */}
-      <View
-        style={{
-          width: 300,
-          height: 650,
-          overflow: 'hidden',
-          position: 'relative',
-        }}
-      >
-        <ImageBackground
-          source={require('../assets/splash-bg.png')}
-          resizeMode="cover"
-          style={{
-            width: '100%',
-            height: '100%',
-          }}
-        >
-          {/* Dark overlay */}
-          <View
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: 'rgba(0,0,0,0.50)',
-              },
-            ]}
-          />
+    <View className="flex-1 items-center justify-center bg-chrome px-8">
+      <View className="items-center">
+        <Image
+          source={require('../assets/hoopswitch-icon.png')}
+          resizeMode="contain"
+          accessibilityLabel="HoopSwitch"
+          style={{ width: markSize, height: markSize, borderRadius: markSize * 0.22 }}
+        />
 
-          {/* Main content */}
-          <View
-            style={{
-              position: 'absolute',
-              top: 145,
-              left: 0,
-              right: 0,
-              alignItems: 'center',
-            }}
-          >
-            {/* Basketball icon */}
-            <Image
-              source={require('../assets/hoopswitch-icon.png')}
-              resizeMode="contain"
-              style={{
-                width: 62,
-                height: 62,
-              }}
-            />
+        <View className="mt-6 h-[3px] w-11 rounded-full bg-primary" />
 
-            {/* Orange line */}
-            <View
-              style={{
-                width: 43,
-                height: 4,
-                borderRadius: 20,
-                backgroundColor: '#FA4B21',
-                marginTop: 18,
-              }}
-            />
+        <Image
+          source={require('../assets/hoopswitch_logo_transparent.png')}
+          resizeMode="contain"
+          // 7.184:1 native aspect, held explicitly so the mark can't shift layout
+          // as it decodes.
+          style={{ width: wordmarkWidth, height: wordmarkWidth / 7.184, marginTop: 22 }}
+        />
 
-            {/* HOOPSWITCH */}
-            <Text
-              style={{
-                marginTop: 17,
-                fontSize: 27,
-                lineHeight: 33,
-                fontWeight: '900',
-                color: '#FFFFFF',
-                letterSpacing: 0.3,
-              }}
-            >
-              HOOPSWITCH
-            </Text>
+        <Text className="font-stat mt-5 text-center text-[16px] tracking-eyebrow text-chrome-text-muted">
+          CONNECT · COMPETE · GET RECRUITED
+        </Text>
+      </View>
 
-            {/* Tagline */}
-            <Text
-              style={{
-                marginTop: 12,
-                fontSize: 13,
-                lineHeight: 19,
-                fontWeight: '700',
-                color: '#FFFFFF',
-                textAlign: 'center',
-              }}
-            >
-              Connect. Compete. Get{'\n'}Recruited.
-            </Text>
-
-            {/* Get Started */}
-            <Pressable
-              onPress={() => router.push('/auth/welcome')}
-              style={({ pressed }) => ({
-                marginTop: 26,
-                height: 48,
-                paddingHorizontal: 22,
-                borderRadius: 10,
-                backgroundColor: '#FA4B21',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 14,
-                  fontWeight: '700',
-                }}
-              >
-                Get Started
-              </Text>
-
-              <Ionicons
-                name="arrow-forward"
-                size={17}
-                color="white"
-                style={{ marginLeft: 8 }}
-              />
-            </Pressable>
-          </View>
-        </ImageBackground>
+      {/* Pinned low so the mark stays optically centred while the bar reports
+          progress. Absolute, so it can't nudge the lockup as it appears. */}
+      <View className="absolute bottom-0 left-0 right-0 items-center pb-16">
+        <IndeterminateBar width={132} />
       </View>
     </View>
   );
