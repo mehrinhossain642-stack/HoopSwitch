@@ -1,15 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH, useLayout } from '../../lib/layout';
 import { COLORS } from '../../lib/theme';
+import { useGoBack } from '../../lib/useGoBack';
 import { Button } from '../Button';
 import { Screen } from '../Screen';
 import { InlineError } from '../ScreenState';
 import { Touchable } from '../Touchable';
 
 export const TOTAL_STEPS = 4;
+
+/** Step order, so a back press on a deep-linked step lands on the previous one. */
+const STEP_ROUTES: readonly Href[] = [
+  '/onboarding/basics',
+  '/onboarding/basketball',
+  '/onboarding/goals',
+  '/onboarding/highlights',
+];
 
 /** Shared chrome for the "Create your profile" steps. */
 export function StepScaffold({
@@ -35,9 +44,12 @@ export function StepScaffold({
   canContinue?: boolean;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { gutter, isDesktop } = useLayout();
+
+  // Step 1 is entered with `replace` (straight from signup, or resumed from the
+  // launch screen), so it has no history and shows no back control at all.
+  const goBack = useGoBack(STEP_ROUTES[Math.max(step - 2, 0)] ?? '/onboarding/basics');
 
   const column = {
     width: '100%' as const,
@@ -53,14 +65,19 @@ export function StepScaffold({
       <View className="bg-chrome" style={{ paddingTop: isDesktop ? 18 : insets.top + 6 }}>
         <View style={column}>
           <View className="h-12 flex-row items-center">
-            <Touchable
-              onPress={() => router.back()}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              className="h-9 w-9 items-center justify-center rounded-full bg-chrome-raised">
-              <Ionicons name="chevron-back" size={18} color={COLORS.chromeText} />
-            </Touchable>
+            {step > 1 ? (
+              <Touchable
+                onPress={goBack}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                className="h-9 w-9 items-center justify-center rounded-full bg-chrome-raised">
+                <Ionicons name="chevron-back" size={18} color={COLORS.chromeText} />
+              </Touchable>
+            ) : (
+              // Keeps the title optically centred without a dead control.
+              <View className="h-9 w-9" />
+            )}
 
             <Text className="font-stat flex-1 text-center text-[15px] tracking-eyebrow text-chrome-text">
               CREATE YOUR PROFILE

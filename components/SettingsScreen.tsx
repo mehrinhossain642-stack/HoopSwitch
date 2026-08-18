@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { useSession } from '../lib/session';
+import { useGoBack } from '../lib/useGoBack';
 import { useThemeColors } from '../lib/theme';
 import { useThemePreference, type ThemePreference } from '../lib/themePreference';
 import { DetailHeader } from './AppHeader';
@@ -26,8 +26,9 @@ const THEME_SEGMENTS = [
  * anything is worse than a setting that isn't offered yet.
  */
 export function SettingsScreen() {
-  const router = useRouter();
   const { user } = useSession();
+  // Settings is reachable by direct URL, so back needs a destination of its own.
+  const goBack = useGoBack(user?.role === 'coach' ? '/coach/profile' : '/player/profile');
   const colors = useThemeColors();
   const contentStyle = useContentContainerStyle({ measure: 'form', paddingTop: 20 });
   const { preference, resolved, setPreference } = useThemePreference();
@@ -36,7 +37,7 @@ export function SettingsScreen() {
 
   return (
     <Screen edges={[]}>
-      <DetailHeader onBack={() => router.back()} title="Settings" />
+      <DetailHeader onBack={goBack} title="Settings" />
 
       <ScrollView contentContainerStyle={contentStyle} showsVerticalScrollIndicator={false}>
         <SectionTitle title="Appearance" className="mb-3" />

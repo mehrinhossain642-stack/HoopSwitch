@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { DetailHeader } from '../../../components/AppHeader';
@@ -25,6 +25,7 @@ import {
 } from '../../../components/StickyActionBar';
 import * as api from '../../../lib/api';
 import { useSession } from '../../../lib/session';
+import { useGoBack } from '../../../lib/useGoBack';
 import { useTierColors, useThemeColors } from '../../../lib/theme';
 import { relativeTime } from '../../../lib/time';
 import { errorMessage, useApiData } from '../../../lib/useApi';
@@ -44,7 +45,8 @@ const COMPONENT_LABELS = {
  */
 export default function PostingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  // Deep links and direct URLs arrive with no history behind them.
+  const goBack = useGoBack('/player');
   const { requireToken, token } = useSession();
   const colors = useThemeColors();
   const contentStyle = useContentContainerStyle({
@@ -80,7 +82,7 @@ export default function PostingDetail() {
   if (!posting) {
     return (
       <Screen edges={[]}>
-        <DetailHeader onBack={() => router.back()} title="Roster spot" />
+        <DetailHeader onBack={goBack} title="Roster spot" />
         <View className="flex-1 justify-center" style={contentStyle}>
           <EmptyState
             icon="alert-circle-outline"
@@ -92,7 +94,7 @@ export default function PostingDetail() {
                 variant="secondary"
                 size="sm"
                 fullWidth={false}
-                onPress={() => router.back()}
+                onPress={goBack}
               />
             }
           />
@@ -107,7 +109,7 @@ export default function PostingDetail() {
   return (
     <Screen edges={[]}>
       <DetailHeader
-        onBack={() => router.back()}
+        onBack={goBack}
         title="Roster spot"
         right={<StatusPill status={posting.status} onDark />}
       />

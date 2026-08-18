@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { DetailHeader } from '../../../components/AppHeader';
@@ -27,6 +27,7 @@ import type { ApiMatch, ApiPosting } from '../../../lib/api';
 import { roleLabel } from '../../../lib/labels';
 import { useLayout } from '../../../lib/layout';
 import { useSession } from '../../../lib/session';
+import { useGoBack } from '../../../lib/useGoBack';
 import { errorMessage, useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbsLabel } from '../../../lib/units';
 
@@ -37,7 +38,8 @@ import { cmToFeetInches, kgToLbsLabel } from '../../../lib/units';
  */
 export default function PlayerDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  // Deep links and direct URLs arrive with no history behind them.
+  const goBack = useGoBack('/coach');
   const { requireToken, token } = useSession();
   const contentStyle = useContentContainerStyle({
     paddingTop: 16,
@@ -96,7 +98,7 @@ export default function PlayerDetail() {
   if (!player) {
     return (
       <Screen edges={[]}>
-        <DetailHeader onBack={() => router.back()} title="Player" />
+        <DetailHeader onBack={goBack} title="Player" />
         <View className="flex-1 justify-center" style={contentStyle}>
           <EmptyState
             icon="alert-circle-outline"
@@ -108,7 +110,7 @@ export default function PlayerDetail() {
                 variant="secondary"
                 size="sm"
                 fullWidth={false}
-                onPress={() => router.back()}
+                onPress={goBack}
               />
             }
           />
@@ -124,7 +126,7 @@ export default function PlayerDetail() {
 
   return (
     <Screen edges={[]}>
-      <DetailHeader onBack={() => router.back()} title="Player" />
+      <DetailHeader onBack={goBack} title="Player" />
 
       <ScrollView contentContainerStyle={contentStyle}>
         {inviteError ? <InlineError message={inviteError} onRetry={invite} /> : null}

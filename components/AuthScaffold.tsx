@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import type { Href } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH, FORM_MAX_WIDTH, useLayout } from '../lib/layout';
 import { COLORS } from '../lib/theme';
+import { useGoBack } from '../lib/useGoBack';
 import { Wordmark } from './AppHeader';
 import { Screen } from './Screen';
 import { Touchable } from './Touchable';
@@ -22,6 +23,7 @@ export function AuthScaffold({
   children,
   footer,
   showBack = true,
+  backFallback = '/auth/welcome',
 }: {
   /** Small uppercase line above the title. */
   eyebrow: string;
@@ -31,8 +33,11 @@ export function AuthScaffold({
   footer?: React.ReactNode;
   /** Hides the back control on the flow's first screen. */
   showBack?: boolean;
+  /** Where back goes when this screen was reached without history behind it. */
+  backFallback?: Href;
 }) {
   const insets = useSafeAreaInsets();
+  const goBack = useGoBack(backFallback);
   const { gutter, isDesktop } = useLayout();
 
   const column = {
@@ -51,7 +56,7 @@ export function AuthScaffold({
           <View className="h-12 flex-row items-center justify-between">
             {showBack ? (
               <Touchable
-                onPress={() => router.back()}
+                onPress={goBack}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"

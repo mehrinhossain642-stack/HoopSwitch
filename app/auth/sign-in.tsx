@@ -47,6 +47,7 @@ export default function SignInScreen() {
     <AuthScaffold
       eyebrow="Sign in"
       title="Welcome back"
+      backFallback="/auth/welcome"
       subtitle="Pick up where you left off — your fit scores are already waiting."
       footer={<Button label="Sign in" size="lg" loading={loading} onPress={handleSignIn} />}>
       {/* Explains an involuntary landing here. Signing out on another device

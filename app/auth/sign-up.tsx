@@ -81,6 +81,7 @@ export default function SignUpScreen() {
     <AuthScaffold
       eyebrow="Create account"
       title="Set up your account"
+      backFallback="/auth/welcome"
       subtitle={
         role === 'player'
           ? "Next you'll build your profile — that's what gets scored against openings."

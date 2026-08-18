@@ -54,6 +54,8 @@ export default function WelcomeScreen() {
       eyebrow="Get started"
       title="Which side of the court?"
       subtitle="This sets up your profile and what you see first. Pick the one that's you, then continue."
+      // Launch replaces into this screen, so there is nothing behind it.
+      showBack={false}
       footer={
         <Button
           label="Continue"
