@@ -10,7 +10,7 @@ import { useSession } from '../../lib/session';
 import { errorMessage } from '../../lib/useApi';
 
 export default function SignInScreen() {
-  const { signIn } = useSession();
+  const { signIn, sessionExpired } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,13 @@ export default function SignInScreen() {
       title="Welcome back"
       subtitle="Pick up where you left off — your fit scores are already waiting."
       footer={<Button label="Sign in" size="lg" loading={loading} onPress={handleSignIn} />}>
+      {/* Explains an involuntary landing here. Signing out on another device
+          revokes this device's token, so arriving without having asked to is a
+          normal thing that needs saying rather than a silent bounce. */}
+      {sessionExpired && !error ? (
+        <InlineError message="Your session ended, so you'll need to sign in again." />
+      ) : null}
+
       {error ? <InlineError message={error} /> : null}
 
       <TextField

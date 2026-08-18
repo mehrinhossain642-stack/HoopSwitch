@@ -72,12 +72,35 @@ type RequestOptions = {
   token?: string | null;
   /** Set when the caller needs the Authorization header off the response. */
   wantAuthHeader?: boolean;
+  /**
+   * Skips the unauthorized hook. For /logout, where a 401 means the token was
+   * already revoked — the outcome we wanted — not a session dying unexpectedly.
+   */
+  suppressUnauthorized?: boolean;
 };
 
 type RawResponse<T> = { data: T; authorization: string | null };
 
+/**
+ * Notified when a request made *with* a token comes back 401 — i.e. the
+ * credential we were holding is no longer good.
+ *
+ * This happens in normal use: the API revokes every previously-issued token when
+ * a user signs out anywhere (devise-jwt's JTIMatcher rotates the user's `jti`),
+ * and tokens also expire on their own. Without this hook a stale token in secure
+ * storage dead-ends the app on an error screen whose "Try again" can never
+ * succeed, because retrying re-sends the same dead token.
+ *
+ * SessionProvider registers the handler; the api module stays free of React.
+ */
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<RawResponse<T>> {
-  const { method = 'GET', body, token } = options;
+  const { method = 'GET', body, token, suppressUnauthorized = false } = options;
 
   // Fail with the actual reason rather than firing a request at a host that
   // can't answer (the tunnel case produces a valid-looking but dead URL).
@@ -108,6 +131,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<R
   const parsed = text.length > 0 ? safeJsonParse(text) : null;
 
   if (!response.ok) {
+    // Only when we actually sent a token. A 401 from /login is a wrong password,
+    // not a dead session, and must not tear down anything.
+    if (response.status === 401 && token && !suppressUnauthorized) {
+      onUnauthorized?.();
+    }
     throw new ApiError(response.status, errorsFrom(parsed, text, response.status));
   }
 
@@ -304,7 +332,7 @@ export async function login(email: string, password: string): Promise<AuthResult
 }
 
 export async function logout(token: string): Promise<void> {
-  await request('/logout', { method: 'DELETE', token });
+  await request('/logout', { method: 'DELETE', token, suppressUnauthorized: true });
 }
 
 // --- player -----------------------------------------------------------------

@@ -17,7 +17,7 @@ import { useSession } from '../lib/session';
  * on a small phone, a tablet and a maximised browser window alike.
  */
 export default function LaunchScreen() {
-  const { user, restoring, landingRoute } = useSession();
+  const { user, restoring, sessionExpired, landingRoute } = useSession();
   const { isTablet } = useLayout();
 
   useEffect(() => {
@@ -27,7 +27,9 @@ export default function LaunchScreen() {
     let cancelled = false;
 
     if (!user) {
-      router.replace('/auth/welcome');
+      // An expired session means they already have an account, so sign-in is the
+      // useful destination — role selection would be asking them to start over.
+      router.replace(sessionExpired ? '/auth/sign-in' : '/auth/welcome');
       return;
     }
 
@@ -38,7 +40,7 @@ export default function LaunchScreen() {
     return () => {
       cancelled = true;
     };
-  }, [restoring, user, landingRoute]);
+  }, [restoring, user, sessionExpired, landingRoute]);
 
   // Scales with the viewport instead of the old hardcoded 62px/27px pair, which
   // looked lost on a tablet and cramped on a small phone.

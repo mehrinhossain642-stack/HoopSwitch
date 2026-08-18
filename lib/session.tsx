@@ -44,6 +44,12 @@ type SessionState = {
   user: ApiUser | null;
   /** True until the persisted session has been read back from storage. */
   restoring: boolean;
+  /**
+   * Set when a stored token was rejected by the API rather than the user choosing
+   * to leave. Lets the UI route to sign-in (they have an account) and say why,
+   * instead of dumping them on role selection with no explanation.
+   */
+  sessionExpired: boolean;
   signIn: (email: string, password: string) => Promise<AuthOutcome>;
   signUp: (
     email: string,
@@ -88,6 +94,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<ApiUser | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  /**
+   * Drops the session locally, without telling the server. Used both by sign-out
+   * (after it has captured the token to revoke) and when the API rejects a token
+   * we were holding — in that case there is nothing to revoke, and calling
+   * /logout with a dead token would just 401 again.
+   */
+  const clearLocalSession = useCallback(async () => {
+    setToken(null);
+    setUser(null);
+    await Promise.all([storage.remove(TOKEN_KEY), storage.remove(USER_KEY)]);
+  }, []);
+
+  // A stored token can be dead before the app even opens: signing out on another
+  // device revokes it (JTIMatcher rotates the user's jti), and tokens expire.
+  // Treat that as "signed out" rather than letting every screen fail its fetch.
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => {
+      setSessionExpired(true);
+      void clearLocalSession();
+    });
+    return () => api.setUnauthorizedHandler(null);
+  }, [clearLocalSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +149,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const persist = useCallback(async (nextToken: string, nextUser: ApiUser) => {
     setToken(nextToken);
     setUser(nextUser);
+    // Authenticating successfully clears the expiry notice.
+    setSessionExpired(false);
     await Promise.all([
       storage.set(TOKEN_KEY, nextToken),
       storage.set(USER_KEY, JSON.stringify(nextUser)),
@@ -179,9 +211,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // was in flight `user` stayed set — long enough for the splash screen to
     // decide it had a live session and route straight back into the app.
     const revoking = token;
-    setToken(null);
-    setUser(null);
-    await Promise.all([storage.remove(TOKEN_KEY), storage.remove(USER_KEY)]);
+    // Leaving on purpose isn't an expiry, so the sign-in screen shouldn't claim it was.
+    setSessionExpired(false);
+    await clearLocalSession();
 
     // Best-effort revocation; the local session is already gone either way, so
     // a failure here must not surface as a failed sign-out.
@@ -192,7 +224,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // Already expired or offline — nothing more to do server-side.
       }
     }
-  }, [token]);
+  }, [token, clearLocalSession]);
 
   const requireToken = useCallback(() => {
     if (!token) throw new Error('Not signed in');
@@ -206,8 +238,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [user, token]);
 
   const value = useMemo<SessionState>(
-    () => ({ token, user, restoring, signIn, signUp, signOut, requireToken, landingRoute }),
-    [token, user, restoring, signIn, signUp, signOut, requireToken, landingRoute]
+    () => ({
+      token,
+      user,
+      restoring,
+      sessionExpired,
+      signIn,
+      signUp,
+      signOut,
+      requireToken,
+      landingRoute,
+    }),
+    [token, user, restoring, sessionExpired, signIn, signUp, signOut, requireToken, landingRoute]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
