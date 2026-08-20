@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import type { DominantHand, Position, PostingStatus } from '../data/types';
 
-export type UserRole = 'player' | 'coach';
+export type UserRole = 'player' | 'coach' | 'parent';
 
 /** Port the Rails API listens on. See api/README.md. */
 const API_PORT = 3001;

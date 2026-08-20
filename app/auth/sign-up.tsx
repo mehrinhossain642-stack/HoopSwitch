@@ -14,6 +14,7 @@ import { errorMessage } from '../../lib/useApi';
 const ROLE_SEGMENTS = [
   { value: 'player' as UserRole, label: 'Player', icon: 'basketball-outline' as const },
   { value: 'coach' as UserRole, label: 'Coach', icon: 'clipboard-outline' as const },
+  { value: 'parent' as UserRole, label: 'Parent', icon: 'people-outline' as const },
 ];
 
 type FieldErrors = {
@@ -29,7 +30,12 @@ export default function SignUpScreen() {
 
   // Seeded from the role confirmed on the welcome screen, but still changeable —
   // this is the last point before the account exists.
-  const initialRole: UserRole = params.role === 'coach' ? 'coach' : 'player';
+  const initialRole: UserRole =
+  params.role === 'coach'
+    ? 'coach'
+    : params.role === 'parent'
+      ? 'parent'
+      : 'player';
 
   const [role, setRole] = useState<UserRole>(initialRole);
   const [fullName, setFullName] = useState('');
@@ -83,10 +89,12 @@ export default function SignUpScreen() {
       title="Set up your account"
       backFallback="/auth/welcome"
       subtitle={
-        role === 'player'
-          ? "Next you'll build your profile — that's what gets scored against openings."
-          : "Next you'll set up your team so candidates can be ranked against your slots."
-      }
+  role === 'player'
+    ? "Next you'll build your athlete profile."
+    : role === 'coach'
+      ? "Next you'll set up your team and start managing opportunities."
+      : "Create your parent account to manage your athlete's activity and approvals."
+}
       footer={
         <Button
           label="Create account"
