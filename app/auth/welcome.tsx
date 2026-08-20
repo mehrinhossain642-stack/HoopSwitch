@@ -35,6 +35,14 @@ const ROLES: readonly RoleOption[] = [
     tile: COLORS.chrome,
     points: ['Ranked candidates', 'Slot requirements', 'Direct invites'],
   },
+  {
+  role: 'parent',
+  title: "I'm a parent",
+  body: "Manage your athlete's activity, approvals, and tryout invitations.",
+  icon: 'people',
+  tile: COLORS.primary,
+  points: ['Linked athlete', 'Tryout approvals', 'Application updates'],
+},
 ];
 
 /**

@@ -35,7 +35,7 @@ const storage = {
 };
 
 /** Where a user lands after authenticating. */
-export type LandingRoute = '/onboarding/basics' | '/player' | '/coach';
+export type LandingRoute = '/onboarding/basics' | '/player' | '/coach' | '/parent';
 
 export type AuthOutcome = { user: ApiUser; route: LandingRoute };
 
@@ -75,17 +75,16 @@ type SessionState = {
  */
 async function resolveLandingRoute(user: ApiUser, token: string): Promise<LandingRoute> {
   if (user.role === 'coach') return '/coach';
+  if (user.role === 'parent') return '/parent';
 
-  // Read the flag from the server rather than trusting a cached copy — the
-  // profile may have been completed on another device.
   try {
     const profile = await api.getProfile(token);
     return profile.onboarding_complete ? '/player' : '/onboarding/basics';
   } catch {
-    // If the check fails, don't trap the user in onboarding.
     return '/player';
   }
 }
+
 
 const SessionContext = createContext<SessionState | null>(null);
 
@@ -186,10 +185,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (name) {
         try {
           if (result.user.role === 'player') {
-            await api.updateProfile(result.token, { name });
-          } else {
-            await api.updateTeam(result.token, { coach_name: name });
-          }
+  await api.updateProfile(result.token, { name });
+} else if (result.user.role === 'coach') {
+  await api.updateTeam(result.token, { coach_name: name });
+}
         } catch {
           // Non-fatal: the account exists and the name is editable in-app.
         }

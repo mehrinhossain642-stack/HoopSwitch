@@ -3,7 +3,7 @@
 class User < ApplicationRecord
   include Devise::JWT::RevocationStrategies::JTIMatcher
 
-  ROLES = %w[player coach].freeze
+  ROLES = %w[player coach parent].freeze
 
   devise :database_authenticatable, :registerable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: self
@@ -13,6 +13,10 @@ class User < ApplicationRecord
 
   validates :role, presence: true, inclusion: { in: ROLES }
 
+  def parent?
+    role == "parent"
+  end
+ 
   def player?
     role == "player"
   end

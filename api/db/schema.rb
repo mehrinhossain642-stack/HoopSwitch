@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_151251) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_20_195816) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -135,7 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_151251) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
-    t.check_constraint "role::text = ANY (ARRAY['player'::character varying::text, 'coach'::character varying::text])", name: "users_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['player'::character varying, 'coach'::character varying, 'parent'::character varying]::text[])", name: "users_role_check"
   end
 
   add_foreign_key "career_stats", "player_profiles"
