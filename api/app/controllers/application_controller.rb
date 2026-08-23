@@ -25,6 +25,10 @@ class ApplicationController < ActionController::API
     render_error("Coach account required", status: :forbidden) unless current_user.coach?
   end
 
+  def require_parent!
+  render_error("Parent account required", status: :forbidden) unless current_user.parent?
+end
+
   def current_player_profile
     @current_player_profile ||=
       current_user.player_profile ||

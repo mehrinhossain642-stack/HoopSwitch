@@ -297,6 +297,14 @@ export type ApiUser = {
   team_id: number | null;
 };
 
+export type LinkedAthlete = {
+  id: number;
+  email: string;
+  player_profile_id: number | null;
+  name: string | null;
+  position: Position | null;
+};
+
 export type AuthResult = { user: ApiUser; token: string };
 
 // --- auth -------------------------------------------------------------------
@@ -433,6 +441,26 @@ export function updatePosting(
 
 export function deletePosting(token: string, id: number): Promise<void> {
   return json<void>(`/postings/${id}`, { method: 'DELETE', token });
+}
+
+// --- parent -----------------------------------------------------------------
+
+export function getParentAthletes(token: string): Promise<LinkedAthlete[]> {
+  return json<LinkedAthlete[]>('/parent/athletes', { token });
+}
+
+export function linkParentAthlete(
+  token: string,
+  email: string
+): Promise<{ message: string; athlete: LinkedAthlete }> {
+  return json<{ message: string; athlete: LinkedAthlete }>(
+    '/parent/athletes/link',
+    {
+      method: 'POST',
+      token,
+      body: { email },
+    }
+  );
 }
 
 // --- feeds (both scored server-side) ----------------------------------------

@@ -32,6 +32,10 @@ Rails.application.routes.draw do
   get "feed/postings", to: "feeds#postings"
   get "feed/players",  to: "feeds#players"
 
+  # --- Parent ------------------------------------------------------------
+get  "parent/athletes",      to: "parent_athletes#index"
+post "parent/athletes/link", to: "parent_athletes#link"
+
   # --- Connections (apply / invite, accept / decline) --------------------
   resources :connections, only: %i[index create update]
 end
