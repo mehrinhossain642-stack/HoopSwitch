@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,6 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
     t.string "grade"
     t.integer "graduation_year"
     t.integer "height_cm", null: false
+    t.integer "jersey_number"
     t.string "location"
     t.string "name", null: false
     t.datetime "onboarding_completed_at"
@@ -89,17 +90,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
     t.string "school"
     t.string "secondary_position"
     t.string "short_term_goal"
+    t.datetime "stats_updated_at"
+    t.bigint "stats_updated_by_team_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.decimal "weight_kg", precision: 5, scale: 1, null: false
     t.integer "wingspan_cm", null: false
+    t.index ["jersey_number"], name: "index_player_profiles_on_jersey_number"
     t.index ["onboarding_completed_at"], name: "index_player_profiles_on_onboarding_completed_at"
     t.index ["position"], name: "index_player_profiles_on_position"
+    t.index ["stats_updated_by_team_id"], name: "index_player_profiles_on_stats_updated_by_team_id"
     t.index ["user_id"], name: "index_player_profiles_on_user_id", unique: true
     t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text])", name: "player_profiles_position_check"
     t.check_constraint "dominant_hand::text = ANY (ARRAY['Left'::character varying::text, 'Right'::character varying::text, 'Ambidextrous'::character varying::text])", name: "player_profiles_hand_check"
     t.check_constraint "goals <@ ARRAY['u_sports'::character varying, 'ncaa'::character varying, 'professional'::character varying, 'skills'::character varying, 'exposure'::character varying]", name: "player_profiles_goals_check"
-    t.check_constraint "secondary_position IS NULL OR (secondary_position::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text]))", name: "player_profiles_secondary_position_check"
+    t.check_constraint "secondary_position IS NULL OR (secondary_position::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[]))", name: "player_profiles_secondary_position_check"
   end
 
   create_table "postings", force: :cascade do |t|
@@ -154,6 +159,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
   add_foreign_key "highlights", "player_profiles"
   add_foreign_key "parent_athletes", "users", column: "athlete_id"
   add_foreign_key "parent_athletes", "users", column: "parent_id"
+  add_foreign_key "player_profiles", "teams", column: "stats_updated_by_team_id"
   add_foreign_key "player_profiles", "users"
   add_foreign_key "postings", "teams"
   add_foreign_key "teams", "users"

@@ -15,6 +15,8 @@ class PlayerProfile < ApplicationRecord
   PROVINCES = %w[AB BC MB NB NL NS NT NU ON PE QC SK YT].freeze
 
   belongs_to :user
+  # Set when a coach's statsheet upload last overwrote this profile's figures.
+  belongs_to :stats_updated_by_team, class_name: "Team", optional: true
   has_many :career_stats, dependent: :destroy
   has_many :highlights, dependent: :destroy
   has_many :connections, dependent: :destroy
@@ -30,6 +32,9 @@ class PlayerProfile < ApplicationRecord
   validates :eligibility_years, numericality: { in: 0..5 }
   validates :ppg, :rpg, :apg, numericality: { in: 0..60 }
   validates :fg_pct, numericality: { in: 0..100 }
+  # Not unique — two players may both wear 23. StatSheetImport treats a number
+  # matching several profiles as ambiguous rather than picking one.
+  validates :jersey_number, numericality: { in: 0..99 }, allow_nil: true
 
   # --- onboarding fields (all optional until the flow completes) -----------
 

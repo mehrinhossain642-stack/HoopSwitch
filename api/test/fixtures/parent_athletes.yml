@@ -1,9 +1,10 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-one:
-  parent: one
-  athlete: one
-
-two:
-  parent: two
-  athlete: two
+# Intentionally empty.
+#
+# This app builds its test data from db/seeds.rb (see HoopSwitchSeeds in
+# test_helper.rb) rather than from fixtures, so there are no `users` fixtures for
+# a parent_athletes row to point at. The generator's default `parent: one /
+# athlete: one` rows referenced labels that don't exist, which tripped Rails'
+# fixture foreign-key check and errored out *every* test in the suite before any
+# of them ran.
+#
+# Build parent links in the test itself (or via the API) instead of here.

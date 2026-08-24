@@ -30,7 +30,12 @@ module PlayerSerializer
       current_team: player.current_team,
       goals: player.goals,
       short_term_goal: player.short_term_goal,
-      onboarding_complete: player.onboarding_complete?
+      onboarding_complete: player.onboarding_complete?,
+      # Statsheet identity and provenance. A coach's upload overwrites the
+      # player's own figures, so the client shows who last did it.
+      jersey_number: player.jersey_number,
+      stats_updated_at: player.stats_updated_at,
+      stats_updated_by_team_name: player.stats_updated_by_team&.name
     }
 
     if include_nested

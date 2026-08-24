@@ -240,6 +240,10 @@ export type ApiPlayer = {
   goals: PlayerGoal[];
   short_term_goal: string | null;
   onboarding_complete: boolean;
+  /** Set when a coach's statsheet upload last overwrote these figures. */
+  jersey_number: number | null;
+  stats_updated_at: string | null;
+  stats_updated_by_team_name: string | null;
   match?: ApiMatch;
   connected?: boolean;
 };
@@ -513,4 +517,54 @@ export function respondToConnection(
     token,
     body: { connection: { status } },
   });
+}
+
+// --- statsheet upload (coach) ----------------------------------------------
+
+export type StatUploadStatus = 'matched' | 'unmatched' | 'ambiguous' | 'invalid';
+
+export type StatUploadRow = {
+  index: number;
+  identifier: string;
+  status: StatUploadStatus;
+  player_id?: number;
+  player_name?: string;
+  /** Only the stat columns this row would actually write. */
+  changes: Partial<Record<'ppg' | 'rpg' | 'apg' | 'fg_pct', number>>;
+  message?: string;
+};
+
+export type StatUploadSummary = {
+  total: number;
+  matched: number;
+  unmatched: number;
+  ambiguous: number;
+  invalid: number;
+};
+
+export type StatUploadResult = {
+  summary: StatUploadSummary;
+  rows: StatUploadRow[];
+  /** Present only on commit: how many profiles were written. */
+  applied?: number;
+};
+
+/**
+ * Dry run. Resolves each row against a player and reports what *would* change,
+ * without writing — the same resolution the commit uses, so the confirmed preview
+ * and the applied result can't disagree.
+ */
+export function previewStatUpload(
+  token: string,
+  rows: Record<string, string | undefined>[]
+): Promise<StatUploadResult> {
+  return json<StatUploadResult>('/stat_uploads/preview', { method: 'POST', token, body: { rows } });
+}
+
+/** Applies the rows that resolve to exactly one player. */
+export function commitStatUpload(
+  token: string,
+  rows: Record<string, string | undefined>[]
+): Promise<StatUploadResult> {
+  return json<StatUploadResult>('/stat_uploads', { method: 'POST', token, body: { rows } });
 }

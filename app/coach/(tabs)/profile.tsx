@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Card } from '../../../components/Card';
@@ -16,7 +17,7 @@ import * as api from '../../../lib/api';
 import type { ApiPosting, PostingPatch } from '../../../lib/api';
 import { POSITION_LABEL, roleLabel } from '../../../lib/labels';
 import { useSession } from '../../../lib/session';
-import { useThemeColors } from '../../../lib/theme';
+import { CARD_SHADOW, useThemeColors } from '../../../lib/theme';
 import { relativeTime } from '../../../lib/time';
 import { useApiData } from '../../../lib/useApi';
 import {
@@ -36,6 +37,7 @@ const STATUS_LABELS: Record<PostingStatus, string> = {
 
 /** Coach Profile — own view. Slot edits PATCH the API and re-score the feed. */
 export default function CoachProfile() {
+  const router = useRouter();
   const { requireToken, token } = useSession();
   const colors = useThemeColors();
   const contentStyle = useContentContainerStyle({ paddingTop: 20 });
@@ -125,6 +127,26 @@ export default function CoachProfile() {
             <Text className="font-sans mt-1 text-center text-[12px] leading-[17px] text-slate">
               Adds an editable opening, and every player gets ranked against it.
             </Text>
+          </Touchable>
+
+          <SectionTitle title="Team stats" className="mb-2.5 mt-6" />
+          <Touchable
+            onPress={() => router.push('/coach/statsheet')}
+            accessibilityRole="button"
+            accessibilityLabel="Upload a statsheet"
+            scaleTo={0.99}
+            className="flex-row items-center rounded-card border border-border bg-surface p-4"
+            style={CARD_SHADOW}>
+            <View className="h-11 w-11 items-center justify-center rounded-md bg-primary-soft">
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
+            </View>
+            <View className="ml-3.5 flex-1">
+              <Text className="font-display text-[15px] text-ink">Upload a statsheet</Text>
+              <Text className="font-sans mt-0.5 text-[12px] leading-[17px] text-slate">
+                Paste from Google Sheets or Excel, or pick a CSV, to update player stats in bulk.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.slate} />
           </Touchable>
 
           <SectionTitle title="About the program" className="mb-2.5 mt-6" />

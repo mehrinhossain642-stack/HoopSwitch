@@ -21,6 +21,7 @@ export default function CoachLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="player/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="settings" options={{ presentation: 'card' }} />
+      <Stack.Screen name="statsheet" options={{ presentation: 'card' }} />
     </Stack>
   );
 }

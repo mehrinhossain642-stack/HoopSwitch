@@ -28,6 +28,12 @@ Rails.application.routes.draw do
   resource :team, only: %i[show update], controller: "teams"
   resources :postings, only: %i[create update destroy]
 
+  # Bulk stat import from a coach's statsheet. `preview` resolves rows and writes
+  # nothing; the create applies the matched ones.
+  resources :stat_uploads, only: %i[create] do
+    post :preview, on: :collection
+  end
+
   # --- Feeds (both scored) -----------------------------------------------
   get "feed/postings", to: "feeds#postings"
   get "feed/players",  to: "feeds#players"

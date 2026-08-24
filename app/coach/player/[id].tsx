@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -27,6 +28,8 @@ import type { ApiMatch, ApiPosting } from '../../../lib/api';
 import { roleLabel } from '../../../lib/labels';
 import { useLayout } from '../../../lib/layout';
 import { useSession } from '../../../lib/session';
+import { useThemeColors } from '../../../lib/theme';
+import { relativeTime } from '../../../lib/time';
 import { useGoBack } from '../../../lib/useGoBack';
 import { errorMessage, useApiData } from '../../../lib/useApi';
 import { cmToFeetInches, kgToLbsLabel } from '../../../lib/units';
@@ -41,6 +44,7 @@ export default function PlayerDetail() {
   // Deep links and direct URLs arrive with no history behind them.
   const goBack = useGoBack('/coach');
   const { requireToken, token } = useSession();
+  const colors = useThemeColors();
   const contentStyle = useContentContainerStyle({
     paddingTop: 16,
     paddingBottom: STICKY_BAR_CLEARANCE,
@@ -165,6 +169,21 @@ export default function PlayerDetail() {
             ]}
           />
         </Card>
+
+        {/* Whose numbers these are. A coach's upload overwrites the player's own
+            figures, so the source has to be visible rather than assumed. */}
+        {player.stats_updated_by_team_name ? (
+          <View className="mt-3 flex-row items-center rounded-md border border-border bg-mist px-3 py-2.5">
+            <Ionicons name="cloud-upload-outline" size={15} color={colors.slate} />
+            <Text className="font-sans ml-2 flex-1 text-[12px] leading-[17px] text-slate">
+              Stats last set by{' '}
+              <Text className="font-sans-semibold text-ink">
+                {player.stats_updated_by_team_name}
+              </Text>
+              {player.stats_updated_at ? ` · ${relativeTime(player.stats_updated_at)}` : ''}
+            </Text>
+          </View>
+        ) : null}
 
         <SpecStrip
           className="mt-3"
