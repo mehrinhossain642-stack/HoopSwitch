@@ -1,24 +1,24 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Platform, Text, View } from 'react-native';
+import { LandingPage } from '../components/landing/LandingPage';
 import { IndeterminateBar } from '../components/Meter';
 import { useLayout } from '../lib/layout';
 import { useSession } from '../lib/session';
 
 /**
- * Launch screen.
+ * The root route, which means two different things per platform.
  *
- * A real launch screen, not a landing page: it holds the brand while the stored
- * session is read back, then routes. Signed in goes to the right home (or back
- * into onboarding if it was abandoned); signed out goes to role selection, where
- * the "get started vs sign in" choice actually belongs.
+ * On web it's the front door for traffic, so a signed-out visitor gets the
+ * landing page and a path into signup. On a phone the app *is* the destination —
+ * opening it to a pitch would be absurd — so it stays a launch screen that holds
+ * the brand while the stored session is read, then routes.
  *
- * It fills the viewport rather than rendering a fixed-size frame, so it's correct
- * on a small phone, a tablet and a maximised browser window alike.
+ * Either way a signed-in visitor is sent straight into the product.
  */
-export default function LaunchScreen() {
+export default function Index() {
   const { user, restoring, sessionExpired, landingRoute } = useSession();
-  const { isTablet } = useLayout();
+  const isWeb = Platform.OS === 'web';
 
   useEffect(() => {
     // Nothing to decide until the persisted session has been read.
@@ -27,9 +27,13 @@ export default function LaunchScreen() {
     let cancelled = false;
 
     if (!user) {
-      // An expired session means they already have an account, so sign-in is the
-      // useful destination — role selection would be asking them to start over.
-      router.replace(sessionExpired ? '/auth/sign-in' : '/auth/welcome');
+      // On web the landing page renders in place — no redirect, that's the
+      // destination. On native, head for the flow.
+      if (!isWeb) {
+        // An expired session means they already have an account, so sign-in is
+        // the useful destination; role selection would ask them to start over.
+        router.replace(sessionExpired ? '/auth/sign-in' : '/auth/welcome');
+      }
       return;
     }
 
@@ -40,9 +44,20 @@ export default function LaunchScreen() {
     return () => {
       cancelled = true;
     };
-  }, [restoring, user, sessionExpired, landingRoute]);
+  }, [restoring, user, sessionExpired, landingRoute, isWeb]);
 
-  // Scales with the viewport instead of the old hardcoded 62px/27px pair, which
+  // Signed-out web visitors get the pitch. Held back until the session has been
+  // read, so a returning user doesn't see a flash of marketing before the app.
+  if (isWeb && !restoring && !user) return <LandingPage />;
+
+  return <LaunchScreen />;
+}
+
+/** Branded hold while the session resolves (and the whole of the native root). */
+function LaunchScreen() {
+  const { isTablet } = useLayout();
+
+  // Scales with the viewport rather than the old hardcoded 62px/27px pair, which
   // looked lost on a tablet and cramped on a small phone.
   const markSize = isTablet ? 92 : 76;
   const wordmarkWidth = isTablet ? 260 : 216;

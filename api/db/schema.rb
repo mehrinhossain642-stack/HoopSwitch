@@ -99,7 +99,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
     t.check_constraint "\"position\"::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text])", name: "player_profiles_position_check"
     t.check_constraint "dominant_hand::text = ANY (ARRAY['Left'::character varying::text, 'Right'::character varying::text, 'Ambidextrous'::character varying::text])", name: "player_profiles_hand_check"
     t.check_constraint "goals <@ ARRAY['u_sports'::character varying, 'ncaa'::character varying, 'professional'::character varying, 'skills'::character varying, 'exposure'::character varying]", name: "player_profiles_goals_check"
-    t.check_constraint "secondary_position IS NULL OR (secondary_position::text = ANY (ARRAY['PG'::character varying, 'SG'::character varying, 'SF'::character varying, 'PF'::character varying, 'C'::character varying]::text[]))", name: "player_profiles_secondary_position_check"
+    t.check_constraint "secondary_position IS NULL OR (secondary_position::text = ANY (ARRAY['PG'::character varying::text, 'SG'::character varying::text, 'SF'::character varying::text, 'PF'::character varying::text, 'C'::character varying::text]))", name: "player_profiles_secondary_position_check"
   end
 
   create_table "postings", force: :cascade do |t|

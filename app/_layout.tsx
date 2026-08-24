@@ -1,4 +1,7 @@
 import '../global.css';
+// Side effect: makes `className` work on Animated.View, which NativeWind
+// otherwise ignores without warning. Must run before any screen renders.
+import '../lib/nativewindInterop';
 
 import {
   BarlowCondensed_500Medium,
