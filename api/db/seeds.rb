@@ -269,6 +269,68 @@ Connection.find_or_create_by!(posting: backup_pg, player_profile: elijah) do |co
   connection.status = "pending"
 end
 
+# --- An admin, plus approved games so profiles have a box score --------------
+
+# Admin accounts are not self-serve: /signup rejects the role, so the only ways in
+# are this seed and an explicit promotion by someone with database access.
+admin = upsert_user!(email: "admin@hoopswitch.example.com", role: "admin")
+
+mustangs = Team.find_by!(name: "Western Mustangs")
+
+# Three games per player, entered as real box score lines rather than averages —
+# PlayerAverages derives PPG/RPG/APG/FG% from these. Numbers are deliberately
+# uneven so the derived averages aren't suspiciously round.
+GAME_LOG = {
+  "Marcus Webb" => [
+    { minutes: 34, fgm: 9,  fga: 18, tpm: 3, tpa: 7, ftm: 5, fta: 6, reb: 5, ast: 7, stl: 2, blk: 0, tov: 3, pts: 26 },
+    { minutes: 31, fgm: 7,  fga: 16, tpm: 2, tpa: 6, ftm: 4, fta: 4, reb: 4, ast: 6, stl: 1, blk: 0, tov: 2, pts: 20 },
+    { minutes: 36, fgm: 10, fga: 19, tpm: 4, tpa: 9, ftm: 2, fta: 2, reb: 6, ast: 8, stl: 3, blk: 1, tov: 4, pts: 26 }
+  ],
+  "Elijah Carter" => [
+    { minutes: 33, fgm: 11, fga: 24, tpm: 5, tpa: 12, ftm: 4, fta: 5, reb: 2, ast: 3, stl: 1, blk: 0, tov: 2, pts: 31 },
+    { minutes: 29, fgm: 8,  fga: 21, tpm: 3, tpa: 10, ftm: 3, fta: 3, reb: 3, ast: 4, stl: 0, blk: 0, tov: 3, pts: 22 },
+    { minutes: 30, fgm: 9,  fga: 20, tpm: 4, tpa: 11, ftm: 5, fta: 6, reb: 1, ast: 2, stl: 2, blk: 0, tov: 1, pts: 27 }
+  ],
+  "Andre Boucher" => [
+    { minutes: 28, fgm: 6, fga: 10, tpm: 0, tpa: 0, ftm: 2, fta: 4, reb: 12, ast: 1, stl: 0, blk: 3, tov: 2, pts: 14 },
+    { minutes: 30, fgm: 5, fga: 9,  tpm: 0, tpa: 1, ftm: 4, fta: 6, reb: 14, ast: 2, stl: 1, blk: 2, tov: 1, pts: 14 },
+    { minutes: 26, fgm: 7, fga: 11, tpm: 0, tpa: 0, ftm: 1, fta: 2, reb: 10, ast: 1, stl: 0, blk: 4, tov: 3, pts: 15 }
+  ]
+}.freeze
+
+OPPONENTS = [ "Queen's Gaels", "Ottawa Gee-Gees", "Laurier Golden Hawks" ].freeze
+
+3.times do |index|
+  game = Game.find_or_initialize_by(
+    team: mustangs,
+    played_on: Date.new(2025, 11, 8 + (index * 7)),
+    opponent: OPPONENTS[index]
+  )
+  game.update!(status: "approved", created_by: admin, reviewed_by: admin,
+               reviewed_at: Time.current)
+
+  GAME_LOG.each do |player_name, lines|
+    profile = PlayerProfile.find_by!(name: player_name)
+    stat = game.game_stats.find_or_initialize_by(player_profile: profile)
+    stat.update!(lines[index])
+  end
+end
+
+# One pending game so the admin review queue isn't empty on a fresh database.
+pending = Game.find_or_initialize_by(team: mustangs, played_on: Date.new(2025, 12, 6),
+                                     opponent: "Toronto Varsity Blues")
+pending.update!(status: "pending", created_by: mustangs.user || admin,
+                reviewed_by: nil, reviewed_at: nil)
+GAME_LOG.each do |player_name, lines|
+  profile = PlayerProfile.find_by!(name: player_name)
+  pending.game_stats.find_or_initialize_by(player_profile: profile).update!(lines.first)
+end
+
+# Derive averages from the approved games only.
+PlayerProfile.find_each { |profile| PlayerAverages.recompute!(profile) }
+
 puts "Seeded #{User.count} users, #{PlayerProfile.count} players, " \
-     "#{Team.count} teams, #{Posting.count} postings, #{Connection.count} connections."
+     "#{Team.count} teams, #{Posting.count} postings, #{Connection.count} connections, " \
+     "#{Game.count} games (#{Game.pending.count} awaiting review)."
 puts "All seeded accounts use password: #{PASSWORD}"
+puts "Admin: admin@hoopswitch.example.com"

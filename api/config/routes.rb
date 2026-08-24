@@ -28,10 +28,18 @@ Rails.application.routes.draw do
   resource :team, only: %i[show update], controller: "teams"
   resources :postings, only: %i[create update destroy]
 
-  # Bulk stat import from a coach's statsheet. `preview` resolves rows and writes
-  # nothing; the create applies the matched ones.
-  resources :stat_uploads, only: %i[create] do
+  # Game box scores. `preview` resolves rows and writes nothing; create persists
+  # the game (pending when a coach uploads it); update is an admin's decision.
+  resources :games, only: %i[index create update] do
     post :preview, on: :collection
+  end
+
+  # --- Admin -------------------------------------------------------------
+  namespace :admin do
+    resources :teams, only: %i[index create update] do
+      post   :assign_coach, on: :member
+      delete :assign_coach, on: :member, action: :unassign_coach
+    end
   end
 
   # --- Feeds (both scored) -----------------------------------------------

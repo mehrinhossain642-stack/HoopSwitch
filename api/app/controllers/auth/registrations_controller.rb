@@ -4,7 +4,23 @@ module Auth
   class RegistrationsController < Devise::RegistrationsController
     respond_to :json
 
+    # Roles anyone may sign up as. `admin` is deliberately absent: it can create
+    # teams, reassign coaches and approve stat changes, so a public endpoint that
+    # accepted it would let anyone grant themselves those powers. Admins come from
+    # db/seeds.rb or a deliberate promotion with database access.
+    SELF_SERVE_ROLES = %w[player coach parent].freeze
+
+    before_action :reject_privileged_role, only: :create
+
     private
+
+    def reject_privileged_role
+      role = params.dig(:user, :role).to_s
+      return if role.empty? || SELF_SERVE_ROLES.include?(role)
+
+      render json: { errors: [ "#{role} accounts can't be created here" ] },
+             status: :forbidden
+    end
 
     def sign_up(resource_name, resource)
       sign_in(resource_name, resource, store: false)

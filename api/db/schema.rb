@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
     t.index ["posting_id"], name: "index_connections_on_posting_id"
     t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying::text, 'coach'::character varying::text])", name: "connections_initiated_by_check"
     t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "connections_status_check"
+  end
+
+  create_table "game_stats", force: :cascade do |t|
+    t.integer "ast", default: 0, null: false
+    t.integer "blk", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "fga", default: 0, null: false
+    t.integer "fgm", default: 0, null: false
+    t.integer "fta", default: 0, null: false
+    t.integer "ftm", default: 0, null: false
+    t.bigint "game_id", null: false
+    t.integer "minutes", default: 0, null: false
+    t.bigint "player_profile_id", null: false
+    t.integer "pts", default: 0, null: false
+    t.integer "reb", default: 0, null: false
+    t.integer "stl", default: 0, null: false
+    t.integer "tov", default: 0, null: false
+    t.integer "tpa", default: 0, null: false
+    t.integer "tpm", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["game_id", "player_profile_id"], name: "index_game_stats_on_game_id_and_player_profile_id", unique: true
+    t.index ["game_id"], name: "index_game_stats_on_game_id"
+    t.index ["player_profile_id"], name: "index_game_stats_on_player_profile_id"
+    t.check_constraint "fgm <= fga", name: "game_stats_fg_check"
+    t.check_constraint "ftm <= fta", name: "game_stats_ft_check"
+    t.check_constraint "tpm <= tpa", name: "game_stats_tp_check"
+  end
+
+  create_table "games", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.string "opponent", null: false
+    t.date "played_on", null: false
+    t.text "review_note"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_id"
+    t.string "status", default: "pending", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_games_on_created_by_id"
+    t.index ["reviewed_by_id"], name: "index_games_on_reviewed_by_id"
+    t.index ["status"], name: "index_games_on_status"
+    t.index ["team_id", "played_on"], name: "index_games_on_team_id_and_played_on"
+    t.index ["team_id"], name: "index_games_on_team_id"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])", name: "games_status_check"
   end
 
   create_table "highlights", force: :cascade do |t|
@@ -75,6 +120,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
     t.string "dominant_hand", default: "Right", null: false
     t.integer "eligibility_years", default: 1, null: false
     t.decimal "fg_pct", precision: 4, scale: 1, default: "0.0", null: false
+    t.integer "games_played", default: 0, null: false
     t.string "goals", default: [], null: false, array: true
     t.string "grade"
     t.integer "graduation_year"
@@ -89,6 +135,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
     t.decimal "rpg", precision: 4, scale: 1, default: "0.0", null: false
     t.string "school"
     t.string "secondary_position"
+    t.decimal "self_reported_apg", precision: 4, scale: 1
+    t.decimal "self_reported_fg_pct", precision: 4, scale: 1
+    t.decimal "self_reported_ppg", precision: 4, scale: 1
+    t.decimal "self_reported_rpg", precision: 4, scale: 1
     t.string "short_term_goal"
     t.datetime "stats_updated_at"
     t.bigint "stats_updated_by_team_id"
@@ -136,7 +186,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
     t.string "name", null: false
     t.integer "roster_size", default: 0, null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.integer "wins", default: 0, null: false
     t.index ["user_id"], name: "index_teams_on_user_id", unique: true
   end
@@ -150,12 +200,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_032924) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
-    t.check_constraint "role::text = ANY (ARRAY['player'::character varying, 'coach'::character varying, 'parent'::character varying]::text[])", name: "users_role_check"
+    t.check_constraint "role::text = ANY (ARRAY['player'::character varying, 'coach'::character varying, 'parent'::character varying, 'admin'::character varying]::text[])", name: "users_role_check"
   end
 
   add_foreign_key "career_stats", "player_profiles"
   add_foreign_key "connections", "player_profiles"
   add_foreign_key "connections", "postings"
+  add_foreign_key "game_stats", "games"
+  add_foreign_key "game_stats", "player_profiles"
+  add_foreign_key "games", "teams"
+  add_foreign_key "games", "users", column: "created_by_id"
+  add_foreign_key "games", "users", column: "reviewed_by_id"
   add_foreign_key "highlights", "player_profiles"
   add_foreign_key "parent_athletes", "users", column: "athlete_id"
   add_foreign_key "parent_athletes", "users", column: "parent_id"

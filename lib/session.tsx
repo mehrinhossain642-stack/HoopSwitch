@@ -35,7 +35,12 @@ const storage = {
 };
 
 /** Where a user lands after authenticating. */
-export type LandingRoute = '/onboarding/basics' | '/player' | '/coach' | '/parent';
+export type LandingRoute =
+  | '/onboarding/basics'
+  | '/player'
+  | '/coach'
+  | '/parent'
+  | '/admin';
 
 export type AuthOutcome = { user: ApiUser; route: LandingRoute };
 
@@ -76,6 +81,8 @@ type SessionState = {
 async function resolveLandingRoute(user: ApiUser, token: string): Promise<LandingRoute> {
   if (user.role === 'coach') return '/coach';
   if (user.role === 'parent') return '/parent';
+  // Admins skip onboarding entirely — the flow is player-specific.
+  if (user.role === 'admin') return '/admin';
 
   try {
     const profile = await api.getProfile(token);

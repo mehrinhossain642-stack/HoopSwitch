@@ -6,6 +6,7 @@ import { DetailHeader } from '../../../components/AppHeader';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
+import { BoxScoreTable } from '../../../components/BoxScoreTable';
 import { CareerStatsTable } from '../../../components/CareerStatsTable';
 import { FitScore } from '../../../components/FitScore';
 import { HighlightCard, NoHighlights } from '../../../components/HighlightCard';
@@ -279,6 +280,32 @@ export default function PlayerDetail() {
         <Card>
           <Text className="font-sans text-[14px] leading-[21px] text-slate">{player.bio}</Text>
         </Card>
+
+        <SectionTitle
+          title="Box score"
+          className="mb-3 mt-6"
+          action={
+            player.stats_from_games ? (
+              <Text className="font-stat text-[13px] tracking-eyebrow text-slate">
+                {player.games_played} GAMES
+              </Text>
+            ) : (
+              <Text className="font-stat text-[13px] tracking-eyebrow text-slate">
+                SELF-REPORTED
+              </Text>
+            )
+          }
+        />
+        <BoxScoreTable
+          games={player.box_score ?? []}
+          averages={{
+            ppg: player.ppg,
+            rpg: player.rpg,
+            apg: player.apg,
+            fgPct: player.fg_pct,
+            gamesPlayed: player.games_played,
+          }}
+        />
 
         <SectionTitle title="Career stats" className="mb-2.5 mt-6" />
         <Card>

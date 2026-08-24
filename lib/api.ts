@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import type { DominantHand, Position, PostingStatus } from '../data/types';
 
-export type UserRole = 'player' | 'coach' | 'parent';
+export type UserRole = 'player' | 'coach' | 'parent' | 'admin';
 
 /** Port the Rails API listens on. See api/README.md. */
 const API_PORT = 3001;
@@ -244,6 +244,10 @@ export type ApiPlayer = {
   jersey_number: number | null;
   stats_updated_at: string | null;
   stats_updated_by_team_name: string | null;
+  /** Averages are derived from approved games once this is above zero. */
+  games_played: number;
+  stats_from_games: boolean;
+  box_score?: ApiGameStat[];
   match?: ApiMatch;
   connected?: boolean;
 };
@@ -519,52 +523,142 @@ export function respondToConnection(
   });
 }
 
-// --- statsheet upload (coach) ----------------------------------------------
+// --- games / box scores (coach + admin) ------------------------------------
 
-export type StatUploadStatus = 'matched' | 'unmatched' | 'ambiguous' | 'invalid';
+export type GameStatus = 'pending' | 'approved' | 'rejected';
 
-export type StatUploadRow = {
+/** One player's line in one game. */
+export type ApiGameStat = {
+  id: number;
+  player_profile_id: number;
+  player_name: string | null;
+  minutes: number;
+  fgm: number;
+  fga: number;
+  tpm: number;
+  tpa: number;
+  ftm: number;
+  fta: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  tov: number;
+  pts: number;
+  // Present when the line carries its game (a player's box score log).
+  game_id?: number;
+  played_on?: string;
+  opponent?: string;
+  team_name?: string;
+  status?: GameStatus;
+};
+
+export type ApiGame = {
+  id: number;
+  team_id: number;
+  team_name: string | null;
+  played_on: string;
+  opponent: string;
+  status: GameStatus;
+  uploaded_by_email: string | null;
+  uploaded_by_role: UserRole | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  player_count: number;
+  stats?: ApiGameStat[];
+};
+
+export type BoxScoreRowStatus = 'matched' | 'unmatched' | 'ambiguous' | 'invalid';
+
+export type BoxScoreRowResult = {
   index: number;
   identifier: string;
-  status: StatUploadStatus;
+  status: BoxScoreRowStatus;
   player_id?: number;
   player_name?: string;
-  /** Only the stat columns this row would actually write. */
-  changes: Partial<Record<'ppg' | 'rpg' | 'apg' | 'fg_pct', number>>;
+  stats: Partial<Record<string, number>>;
   message?: string;
 };
 
-export type StatUploadSummary = {
-  total: number;
-  matched: number;
-  unmatched: number;
-  ambiguous: number;
-  invalid: number;
+export type BoxScorePreview = {
+  summary: { total: number; matched: number; unmatched: number; ambiguous: number; invalid: number };
+  rows: BoxScoreRowResult[];
+  /** Problems with the game itself (missing date or opponent) rather than a row. */
+  game_errors: string[];
+  /** Where this upload would land given who's uploading: pending for a coach. */
+  lands_as: GameStatus;
 };
 
-export type StatUploadResult = {
-  summary: StatUploadSummary;
-  rows: StatUploadRow[];
-  /** Present only on commit: how many profiles were written. */
-  applied?: number;
+export type GameUpload = {
+  played_on: string;
+  opponent: string;
+  rows: Record<string, string | undefined>[];
+  /** Admins upload on a team's behalf and must say which. */
+  team_id?: number;
 };
 
-/**
- * Dry run. Resolves each row against a player and reports what *would* change,
- * without writing — the same resolution the commit uses, so the confirmed preview
- * and the applied result can't disagree.
- */
-export function previewStatUpload(
-  token: string,
-  rows: Record<string, string | undefined>[]
-): Promise<StatUploadResult> {
-  return json<StatUploadResult>('/stat_uploads/preview', { method: 'POST', token, body: { rows } });
+/** Dry run — resolves rows and reports where the upload would land. Writes nothing. */
+export function previewGame(token: string, upload: GameUpload): Promise<BoxScorePreview> {
+  return json<BoxScorePreview>('/games/preview', { method: 'POST', token, body: upload });
 }
 
-/** Applies the rows that resolve to exactly one player. */
-export function commitStatUpload(
+/** Creates the game. A coach's lands pending; an admin's lands approved. */
+export function createGame(
   token: string,
-  rows: Record<string, string | undefined>[]
-): Promise<StatUploadResult> {
-  return json<StatUploadResult>('/stat_uploads', { method: 'POST', token, body: { rows } });
+  upload: GameUpload
+): Promise<{ game: ApiGame; summary: BoxScorePreview['summary']; rows: BoxScoreRowResult[] }> {
+  return json('/games', { method: 'POST', token, body: upload });
+}
+
+export function listGames(token: string, status?: GameStatus): Promise<{ games: ApiGame[] }> {
+  const query = status ? `?status=${status}` : '';
+  return json<{ games: ApiGame[] }>(`/games${query}`, { token });
+}
+
+/** Admin only. Recomputes affected averages either way. */
+export function reviewGame(
+  token: string,
+  id: number,
+  status: 'approved' | 'rejected',
+  reviewNote?: string
+): Promise<{ game: ApiGame }> {
+  return json(`/games/${id}`, {
+    method: 'PATCH',
+    token,
+    body: { game: { status, review_note: reviewNote } },
+  });
+}
+
+// --- admin: teams and coaches ---------------------------------------------
+
+export type AdminTeam = ApiTeam & {
+  coach_email: string | null;
+  coach_assigned: boolean;
+  pending_games: number;
+};
+
+export function listAdminTeams(
+  token: string
+): Promise<{ teams: AdminTeam[]; unassigned_coaches: { id: number; email: string }[] }> {
+  return json('/admin/teams', { token });
+}
+
+export function createAdminTeam(
+  token: string,
+  team: { name: string; league?: string; location?: string; roster_size?: number }
+): Promise<{ team: AdminTeam }> {
+  return json('/admin/teams', { method: 'POST', token, body: { team } });
+}
+
+export function assignCoach(
+  token: string,
+  teamId: number,
+  email: string
+): Promise<{ team: AdminTeam }> {
+  return json(`/admin/teams/${teamId}/assign_coach`, { method: 'POST', token, body: { email } });
+}
+
+export function unassignCoach(token: string, teamId: number): Promise<{ team: AdminTeam }> {
+  return json(`/admin/teams/${teamId}/assign_coach`, { method: 'DELETE', token });
 }

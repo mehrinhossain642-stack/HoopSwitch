@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Card } from '../../../components/Card';
+import { BoxScoreTable } from '../../../components/BoxScoreTable';
 import { CareerStatsTable } from '../../../components/CareerStatsTable';
 import { EditableField } from '../../../components/EditableField';
 import { AddHighlightTile, HighlightCard } from '../../../components/HighlightCard';
@@ -222,6 +223,31 @@ export default function PlayerProfile() {
               }}
             />
           </Card>
+
+          <SectionTitle
+            title="Box score"
+            className="mb-3 mt-6"
+            action={
+              player.stats_from_games ? (
+                <View className="flex-row items-center">
+                  <Ionicons name="lock-closed-outline" size={12} color={colors.slate} />
+                  <Text className="font-sans-medium ml-1.5 text-[11px] text-slate">
+                    From {player.games_played} games
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+          <BoxScoreTable
+            games={player.box_score ?? []}
+            averages={{
+              ppg: player.ppg,
+              rpg: player.rpg,
+              apg: player.apg,
+              fgPct: player.fg_pct,
+              gamesPlayed: player.games_played,
+            }}
+          />
 
           <SectionTitle title="Career stats" className="mb-2.5 mt-6" />
           <Card>

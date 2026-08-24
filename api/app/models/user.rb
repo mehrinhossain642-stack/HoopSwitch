@@ -3,7 +3,7 @@
 class User < ApplicationRecord
   include Devise::JWT::RevocationStrategies::JTIMatcher
 
-  ROLES = %w[player parent coach].freeze
+  ROLES = %w[player parent coach admin].freeze
 
   devise :database_authenticatable, :registerable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: self
@@ -38,6 +38,11 @@ end
 def parent?
   role == "parent"
 end
+
+  # Admins create teams, assign coaches, and review coach-submitted games.
+  def admin?
+    role == "admin"
+  end
 
 def coach?
   role == "coach"

@@ -18,6 +18,8 @@ class PlayerProfile < ApplicationRecord
   # Set when a coach's statsheet upload last overwrote this profile's figures.
   belongs_to :stats_updated_by_team, class_name: "Team", optional: true
   has_many :career_stats, dependent: :destroy
+  has_many :game_stats, dependent: :destroy
+  has_many :games, through: :game_stats
   has_many :highlights, dependent: :destroy
   has_many :connections, dependent: :destroy
   has_many :postings, through: :connections
@@ -55,6 +57,16 @@ class PlayerProfile < ApplicationRecord
 
   def onboarding_complete?
     onboarding_completed_at.present?
+  end
+
+  # True once approved games drive the averages, which makes ppg/rpg/apg/fg_pct
+  # derived rather than something the player should still be editing by hand.
+  def stats_from_games?
+    games_played.positive?
+  end
+
+  def approved_game_stats
+    game_stats.joins(:game).where(games: { status: "approved" })
   end
 
   private

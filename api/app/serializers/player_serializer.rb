@@ -35,12 +35,22 @@ module PlayerSerializer
       # player's own figures, so the client shows who last did it.
       jersey_number: player.jersey_number,
       stats_updated_at: player.stats_updated_at,
-      stats_updated_by_team_name: player.stats_updated_by_team&.name
+      stats_updated_by_team_name: player.stats_updated_by_team&.name,
+      # Averages above are derived from approved games once there are any. The
+      # client uses this to label them and to stop offering them as editable.
+      games_played: player.games_played,
+      stats_from_games: player.stats_from_games?
     }
 
     if include_nested
       payload[:career_stats] = player.career_stats.recent_first.map { |stat| CareerStatSerializer.call(stat) }
       payload[:highlights] = player.highlights.map { |highlight| HighlightSerializer.call(highlight) }
+      # Approved games only: a pending upload must not appear as fact on a
+      # profile other people are evaluating.
+      payload[:box_score] = player.approved_game_stats
+                                  .includes(game: :team)
+                                  .order("games.played_on DESC, games.id DESC")
+                                  .map { |stat| GameStatSerializer.call(stat, include_game: true) }
     end
 
     payload[:match] = match.as_json if match

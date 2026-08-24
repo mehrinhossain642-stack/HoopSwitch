@@ -14,9 +14,18 @@ type IconPair = {
 
 const FALLBACK_ICON: IconPair = { active: 'ellipse', idle: 'ellipse-outline' };
 
+/** Where each role's account controls live, for the rail's footer hint. */
+const ACCOUNT_TAB: Record<string, string> = {
+  player: 'the Profile tab',
+  coach: 'the Team tab',
+  parent: 'the Profile tab',
+  admin: 'Settings',
+};
+
 const ICONS: Record<string, IconPair> = {
   index: { active: 'basketball', idle: 'basketball-outline' },
   profile: { active: 'person', idle: 'person-outline' },
+  teams: { active: 'people', idle: 'people-outline' },
 };
 
 type TabItem = {
@@ -126,7 +135,7 @@ function NavRail(props: BottomTabBarProps) {
         <Wordmark size={21} onDark />
         {user ? (
           <Text className="font-stat mt-1 text-[13px] tracking-eyebrow text-chrome-text-muted">
-            {user.role === 'coach' ? 'COACH' : 'PLAYER'}
+            {user.role.toUpperCase()}
           </Text>
         ) : null}
       </View>
@@ -169,8 +178,8 @@ function NavRail(props: BottomTabBarProps) {
       {/* Sign-out deliberately lives on the profile screen, not here — it ends the
           session rather than navigating, so it shouldn't sit among destinations. */}
       <Text className="font-sans px-3 text-[11px] leading-[15px] text-chrome-text-muted">
-        Manage your account from the{'\n'}
-        {user?.role === 'coach' ? 'Team' : 'Profile'} tab.
+        Manage your account from{'\n'}
+        {ACCOUNT_TAB[user?.role ?? 'player']}.
       </Text>
     </View>
   );

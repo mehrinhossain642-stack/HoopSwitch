@@ -47,14 +47,17 @@ module ActiveSupport
   end
 end
 
-# Loads db/seeds.rb into the current database, quietly and only once per process.
+# Loads db/seeds.rb into the current database, quietly and only when it's empty.
 module HoopSwitchSeeds
+  # Idempotency is judged from the *database*, deliberately not from a memo in
+  # this process. Parallel workers are forked after the parent has already seeded
+  # its own database, so any `@loaded = true` flag is inherited as true and each
+  # worker would skip seeding the separate database it just got handed — leaving
+  # every login in that worker failing with a 401.
   def self.load!
-    return if @loaded
     return if PlayerProfile.exists?
 
     silence_stream($stdout) { Rails.application.load_seed }
-    @loaded = true
   end
 
   def self.silence_stream(stream)
