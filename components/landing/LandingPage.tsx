@@ -12,6 +12,7 @@ import { PositionBadge } from '../PositionBadge';
 import { Screen } from '../Screen';
 import { SpecStrip } from '../StatStrip';
 import { StatusPill } from '../StatusPill';
+import { ThemeToggleButton } from '../ThemeToggleButton';
 import { Touchable } from '../Touchable';
 import { HeroReveal, ScrollReveal } from './ScrollReveal';
 
@@ -88,6 +89,11 @@ export function LandingPage() {
             <Wordmark size={20} onDark />
 
             <View className="flex-row items-center">
+              {/* There's no settings screen in front of a signed-out visitor, so
+                  the theme switch lives in the nav. The choice persists, so it
+                  carries through signup into the app. */}
+              <ThemeToggleButton onDark />
+
               <Touchable
                 onPress={signIn}
                 accessibilityRole="button"
@@ -98,13 +104,7 @@ export function LandingPage() {
                 <Text className="font-sans-semibold text-[13px] text-chrome-text">Sign in</Text>
               </Touchable>
 
-              <Button
-                label="Get started"
-                size="sm"
-                onPress={start}
-                fullWidth={false}
-                className="ml-1"
-              />
+              <Button label="Get started" size="sm" onPress={start} fullWidth={false} />
             </View>
           </View>
         </View>
@@ -134,8 +134,7 @@ export function LandingPage() {
 
                 <HeroReveal delay={180}>
                   <Text className="font-sans mt-5 max-w-[520px] text-[16px] leading-[25px] text-chrome-text-muted">
-                    HoopSwitch scores every open roster spot against your actual game — height,
-                    weight, position, production — so you apply where you&apos;ll actually play.
+                    HoopSwitch scores every open roster spot against your actual game so you apply where you&apos;ll actually play.
                   </Text>
                 </HeroReveal>
 
