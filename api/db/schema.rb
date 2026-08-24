@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_195816) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_032617) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,6 +53,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_195816) do
     t.string "url", null: false
     t.index ["player_profile_id"], name: "index_highlights_on_player_profile_id"
     t.check_constraint "source_type::text = ANY (ARRAY['external'::character varying::text, 'uploaded'::character varying::text])", name: "highlights_source_type_check"
+  end
+
+  create_table "parent_athletes", force: :cascade do |t|
+    t.bigint "athlete_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "parent_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["athlete_id"], name: "index_parent_athletes_on_athlete_id"
+    t.index ["parent_id", "athlete_id"], name: "index_parent_athletes_on_parent_id_and_athlete_id", unique: true
+    t.index ["parent_id"], name: "index_parent_athletes_on_parent_id"
   end
 
   create_table "player_profiles", force: :cascade do |t|
@@ -142,6 +152,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_195816) do
   add_foreign_key "connections", "player_profiles"
   add_foreign_key "connections", "postings"
   add_foreign_key "highlights", "player_profiles"
+  add_foreign_key "parent_athletes", "users", column: "athlete_id"
+  add_foreign_key "parent_athletes", "users", column: "parent_id"
   add_foreign_key "player_profiles", "users"
   add_foreign_key "postings", "teams"
   add_foreign_key "teams", "users"
