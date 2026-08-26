@@ -1,229 +1,251 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
-import { AppHeader } from '../../../components/AppHeader';
-import { Button } from '../../../components/Button';
-import { Chip } from '../../../components/Chip';
-import { PostingCard } from '../../../components/PostingCard';
-import { Screen, useContentContainerStyle } from '../../../components/Screen';
-import { EmptyState, InlineError, ScreenError } from '../../../components/ScreenState';
-import { SearchField } from '../../../components/SearchField';
-import { FeedSkeleton } from '../../../components/Skeleton';
-import { Reveal } from '../../../components/Touchable';
-import * as api from '../../../lib/api';
-import type { ApiPosting } from '../../../lib/api';
-import { useSession } from '../../../lib/session';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ScrollView, Text, View } from 'react-native';
+import { Screen } from '../../../components/Screen';
 import { useThemeColors } from '../../../lib/theme';
-import { errorMessage, useApiData } from '../../../lib/useApi';
 
-type FilterKey = 'position' | 'level' | 'location';
-
-const NO_FILTERS: Record<FilterKey, boolean> = {
-  position: false,
-  level: false,
-  location: false,
-};
-
-/**
- * Player Home — postings scored by the API against the signed-in player and
- * returned best-fit-first. Sorting and scoring both happen server-side.
- */
 export default function PlayerHome() {
-  const router = useRouter();
-  const { requireToken, token } = useSession();
   const colors = useThemeColors();
-  const contentStyle = useContentContainerStyle({ paddingTop: 16 });
 
-  const feed = useApiData(() => api.getPostingFeed(requireToken()), [token]);
-  const profile = useApiData(() => api.getProfile(requireToken()), [token]);
-
-  const [query, setQuery] = useState('');
-  const [applyError, setApplyError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<number | null>(null);
-  const [filters, setFilters] = useState<Record<FilterKey, boolean>>(NO_FILTERS);
-
-  function toggleFilter(key: FilterKey) {
-    setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  const playerPosition = profile.data?.position ?? 'PG';
-  const postings = useMemo(() => feed.data?.postings ?? [], [feed.data]);
-
-  // Search and filters stay client-side — the API returns the whole scored,
-  // pre-sorted list, so narrowing it locally avoids a round trip per keystroke.
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-
-    return postings.filter((posting) => {
-      if (filters.position && posting.position !== playerPosition) return false;
-      if (filters.level && !(posting.team?.league ?? '').includes('U SPORTS')) return false;
-      if (filters.location && !(posting.team?.location ?? '').endsWith('ON')) return false;
-      if (needle.length > 0) {
-        const haystack = [
-          posting.team?.name,
-          posting.headline,
-          posting.position,
-          posting.team?.location,
-          posting.team?.league,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
-  }, [postings, filters, query, playerPosition]);
-
-  const apply = useCallback(
-    async (posting: ApiPosting) => {
-      if (posting.connected || pendingId !== null) return;
-      setApplyError(null);
-      setPendingId(posting.id);
-
-      // Optimistic: flip the button immediately, roll back if the POST fails.
-      const optimistic = postings.map((item) =>
-        item.id === posting.id ? { ...item, connected: true } : item
-      );
-      feed.setData({ player_id: feed.data?.player_id ?? 0, postings: optimistic });
-
-      try {
-        await api.createConnection(requireToken(), posting.id);
-      } catch (caught) {
-        setApplyError(errorMessage(caught));
-        feed.refetch();
-      } finally {
-        setPendingId(null);
-      }
-    },
-    [postings, feed, requireToken, pendingId]
-  );
-
-  if (feed.error && !feed.data) {
-    return <ScreenError message={feed.error} onRetry={feed.refetch} />;
-  }
-
-  const activeFilters = Object.values(filters).filter(Boolean).length;
-  const loadingFirst = feed.loading && !feed.data;
-
-  const header = (
-    <AppHeader
-      brand
-      meta={
-        loadingFirst
-          ? 'Loading openings'
-          : `${visible.length} ${visible.length === 1 ? 'spot' : 'spots'} · best fit first`
-      }>
-      <SearchField
-        onDark
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search teams, roles, cities"
-      />
-
-      {/* The chips are the filter UI. There used to be a filter icon with a count
-          badge and no handler attached — a control that does nothing is its own
-          kind of tell. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        className="mt-3"
-        contentContainerStyle={{ paddingRight: 4 }}>
-        <Chip
-          onDark
-          label={`My position · ${playerPosition}`}
-          icon="basketball-outline"
-          active={filters.position}
-          onPress={() => toggleFilter('position')}
-        />
-        <Chip
-          onDark
-          label="U SPORTS"
-          icon="trophy-outline"
-          active={filters.level}
-          onPress={() => toggleFilter('level')}
-        />
-        <Chip
-          onDark
-          label="Ontario"
-          icon="location-outline"
-          active={filters.location}
-          onPress={() => toggleFilter('location')}
-        />
-        {activeFilters > 0 ? (
-          <Chip onDark label="Reset" icon="close" onPress={() => setFilters(NO_FILTERS)} />
-        ) : null}
-      </ScrollView>
-    </AppHeader>
-  );
-
-  if (loadingFirst) {
-    return (
-      <Screen edges={[]}>
-        {header}
-        <ScrollView contentContainerStyle={contentStyle}>
-          <FeedSkeleton />
-        </ScrollView>
-      </Screen>
-    );
-  }
+  // Temporary until we wire this to the API.
+  const hasVerifiedStats = false;
 
   return (
     <Screen edges={[]}>
-      {header}
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{
+          paddingHorizontal: 18,
+          paddingTop: 22,
+          paddingBottom: 36,
+        }}>
 
-      <FlatList
-        data={visible}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={contentStyle}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={feed.loading}
-            onRefresh={feed.refetch}
-            tintColor={colors.primary}
-          />
-        }
-        ListHeaderComponent={
-          applyError ? (
-            <InlineError message={applyError} onRetry={() => setApplyError(null)} />
-          ) : null
-        }
-        renderItem={({ item, index }) => (
-          <Reveal index={index}>
-            <PostingCard
-              posting={item}
-              applied={item.connected === true}
-              pending={pendingId === item.id}
-              onApply={() => apply(item)}
-              onPress={() => router.push(`/player/posting/${item.id}`)}
-            />
-          </Reveal>
-        )}
-        ListEmptyComponent={
-          <EmptyState
-            icon="search-outline"
-            title="No roster spots match"
-            body={
-              activeFilters > 0
-                ? 'Your filters are narrowing this to nothing. Clear one to see more openings.'
-                : 'Nothing matches that search yet. Try a team name, a city, or a position.'
-            }
-            action={
-              activeFilters > 0 ? (
-                <Button
-                  label="Clear filters"
-                  variant="secondary"
-                  size="sm"
-                  fullWidth={false}
-                  onPress={() => setFilters(NO_FILTERS)}
+        {/* Greeting */}
+        <View className="mb-5">
+          <Text className="font-sans-bold text-[24px] text-ink">
+            Hey Marcus! 👋
+          </Text>
+
+          <Text className="font-sans mt-1 text-[13px] text-slate">
+            Let&apos;s get better today.
+          </Text>
+        </View>
+
+        {/* Season Stats */}
+        <View className="rounded-card border border-border bg-surface p-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-sans-bold text-[15px] text-ink">
+              Season Stats
+            </Text>
+
+            <View className="flex-row items-center">
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={16}
+                color={colors.primary}
+              />
+              <Text className="font-sans-medium ml-1 text-[11px] text-primary">
+                Verified
+              </Text>
+            </View>
+          </View>
+
+          {hasVerifiedStats ? (
+            <>
+              <View className="mt-4 flex-row justify-between">
+                <Stat value="12" label="Games" />
+                <Stat value="18.6" label="PPG" />
+                <Stat value="6.2" label="RPG" />
+                <Stat value="2.1" label="APG" />
+              </View>
+
+              <View className="my-4 h-px bg-border" />
+
+              <View className="flex-row">
+                <View className="flex-1 border-r border-border pr-4">
+                  <Text className="font-sans-medium text-[11px] text-slate">
+                    Overall Rating
+                  </Text>
+
+                  <Text className="font-stat mt-1 text-[34px] text-ink">
+                    78
+                  </Text>
+
+                  <Text className="font-sans-medium text-[11px] text-slate">
+                    Good
+                  </Text>
+
+                  <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-mist">
+                    <View className="h-full w-[78%] rounded-full bg-primary" />
+                  </View>
+                </View>
+
+                <View className="flex-1 pl-4">
+                  <Text className="font-sans-medium text-[11px] text-slate">
+                    Position
+                  </Text>
+
+                  <Text className="font-sans-semibold mt-1 text-[13px] text-ink">
+                    SG / SF
+                  </Text>
+
+                  <Text className="font-sans-medium mt-4 text-[11px] text-slate">
+                    Grade Year
+                  </Text>
+
+                  <Text className="font-sans-semibold mt-1 text-[13px] text-ink">
+                    2026
+                  </Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <View className="mt-4 rounded-btn bg-mist p-4">
+              <View className="flex-row items-start">
+                <Ionicons
+                  name="stats-chart-outline"
+                  size={20}
+                  color={colors.primary}
                 />
-              ) : null
-            }
+
+                <View className="ml-3 flex-1">
+                  <Text className="font-sans-semibold text-[14px] text-ink">
+                    No verified stats yet
+                  </Text>
+
+                  <Text className="font-sans mt-1 text-[12px] leading-[18px] text-slate">
+                    Your game stats will automatically appear here after they
+                    are uploaded by your coach or a HoopSwitch admin.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Development Focus */}
+        <View className="mt-4 rounded-card border border-border bg-surface p-4">
+          <Text className="font-sans-bold text-[15px] text-ink">
+            Development Focus
+          </Text>
+
+          <Text className="font-sans mt-1 text-[11px] text-slate">
+            Based on your goals and verified performance.
+          </Text>
+
+          <DevelopmentItem
+            icon="basketball-outline"
+            title="Improve Ball Handling"
+            description="Consistency, control, advanced moves"
           />
-        }
-      />
+
+          <DevelopmentItem
+            icon="locate-outline"
+            title="Increase Shooting %"
+            description="Catch & shoot, off the dribble"
+          />
+
+          <DevelopmentItem
+            icon="fitness-outline"
+            title="Strength & Conditioning"
+            description="Explosiveness, endurance, agility"
+          />
+        </View>
+
+        {/* Current Goals */}
+        <View className="mt-4 rounded-card border border-border bg-surface p-4">
+          <Text className="font-sans-bold text-[15px] text-ink">
+            Your Goals
+          </Text>
+
+          <View className="mt-3 flex-row flex-wrap gap-2">
+            <Goal label="Improve shooting" />
+            <Goal label="Stronger guard play" />
+            <Goal label="Make a competitive team" />
+          </View>
+        </View>
+
+        {/* Next Step */}
+        <View className="mt-4 rounded-card border border-border bg-surface p-4">
+          <Text className="font-sans-bold text-[15px] text-ink">
+            Next Step
+          </Text>
+
+          <Text className="font-sans mt-1 text-[12px] leading-[18px] text-slate">
+            Once verified game data is available, your development insights
+            will become more personalized.
+          </Text>
+
+          <View className="mt-4 flex-row items-center rounded-btn bg-primary-soft px-3 py-3">
+            <Ionicons
+              name="information-circle-outline"
+              size={19}
+              color={colors.primary}
+            />
+
+            <Text className="font-sans-medium ml-2 flex-1 text-[12px] text-primary">
+              Stats can only be uploaded by coaches and admins.
+            </Text>
+          </View>
+        </View>
+
+      </ScrollView>
     </Screen>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View className="items-center">
+      <Text className="font-stat text-[24px] text-ink">{value}</Text>
+      <Text className="font-sans-medium mt-0.5 text-[10px] text-slate">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function DevelopmentItem({
+  icon,
+  title,
+  description,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+}) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mt-4 flex-row items-center">
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary-soft">
+        <Ionicons name={icon} size={20} color={colors.primary} />
+      </View>
+
+      <View className="ml-3 flex-1">
+        <Text className="font-sans-semibold text-[13px] text-ink">
+          {title}
+        </Text>
+
+        <Text className="font-sans mt-0.5 text-[11px] text-slate">
+          {description}
+        </Text>
+      </View>
+
+      <Ionicons
+        name="chevron-forward"
+        size={18}
+        color={colors.slate}
+      />
+    </View>
+  );
+}
+
+function Goal({ label }: { label: string }) {
+  return (
+    <View className="rounded-full border border-border bg-mist px-3 py-2">
+      <Text className="font-sans-medium text-[11px] text-ink">
+        {label}
+      </Text>
+    </View>
   );
 }

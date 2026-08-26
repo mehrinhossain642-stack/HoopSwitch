@@ -23,7 +23,9 @@ const ACCOUNT_TAB: Record<string, string> = {
 };
 
 const ICONS: Record<string, IconPair> = {
-  index: { active: 'basketball', idle: 'basketball-outline' },
+  index: { active: 'home', idle: 'home-outline' },
+  opportunities: { active: 'basketball', idle: 'basketball-outline' },
+  activity: { active: 'options', idle: 'options-outline' },
   profile: { active: 'person', idle: 'person-outline' },
   teams: { active: 'people', idle: 'people-outline' },
 };
