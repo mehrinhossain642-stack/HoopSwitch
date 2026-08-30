@@ -27,13 +27,15 @@ module Auth
     end
 
     def sign_up_params
-      params.require(:user).permit(
-        :email,
-        :password,
-        :password_confirmation,
-        :role
-      )
-    end
+  params.require(:user).permit(
+    :email,
+    :password,
+    :password_confirmation,
+    :role,
+    :name,
+    :avatar_url
+  )
+end
 
     def respond_with(resource, _opts = {})
       if resource.persisted?
@@ -80,13 +82,15 @@ module Auth
     end
 
     def user_payload(user)
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        player_profile_id: user.player_profile&.id,
-        team_id: user.team&.id
-      }
-    end
+  {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    name: user.name,
+    avatar_url: user.avatar_url,
+    player_profile_id: user.player_profile&.id,
+    team_id: user.team&.id
+  }
+end
   end
 end

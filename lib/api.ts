@@ -288,16 +288,40 @@ export type ApiPosting = {
   connected?: boolean;
 };
 
+export type ApiConnectionStatus =
+  | 'pending_parent_approval'
+  | 'under_review'
+  | 'shared_with_coach'
+  | 'coach_interested'
+  | 'tryout_offered'
+  | 'confirmed'
+  | 'declined'
+  | 'not_selected'
+  | 'closed';
+
 export type ApiConnection = {
   id: number;
   posting_id: number;
   player_profile_id: number;
-  initiated_by: UserRole;
-  status: 'pending' | 'accepted' | 'declined';
+
+  initiated_by: 'player' | 'parent' | 'coach';
+
+  status: ApiConnectionStatus;
+
   created_at: string;
+
+  posting?: ApiPosting;
+
+  athlete?: {
+    id: number;
+    name: string;
+    position: Position;
+  };
 };
 
 export type ApiUser = {
+  name?: string | null;
+avatar_url?: string | null;
   id: number;
   email: string;
   role: UserRole;
@@ -314,6 +338,24 @@ export type LinkedAthlete = {
 };
 
 export type AuthResult = { user: ApiUser; token: string };
+export function reviewParentApplication(
+  token: string,
+  connectionId: number,
+  status: 'under_review' | 'declined'
+): Promise<ApiConnection> {
+  return json<ApiConnection>(
+    `/connections/${connectionId}`,
+    {
+      method: 'PATCH',
+      token,
+      body: {
+        connection: {
+          status,
+        },
+      },
+    }
+  );
+}
 
 // --- auth -------------------------------------------------------------------
 
@@ -452,6 +494,44 @@ export function deletePosting(token: string, id: number): Promise<void> {
 }
 
 // --- parent -----------------------------------------------------------------
+export function getParentProfile(token: string): Promise<ApiUser> {
+  return json<ApiUser>('/parent/profile', { token });
+}
+
+export function updateParentProfile(
+  token: string,
+  patch: { name?: string; avatar_url?: string | null }
+): Promise<ApiUser> {
+  return json<ApiUser>('/parent/profile', {
+    method: 'PATCH',
+    token,
+    body: { user: patch },
+  });
+}
+export function getParentAthleteProfile(
+  token: string,
+  athleteId: number
+): Promise<ApiPlayer> {
+  return json<ApiPlayer>(
+    `/parent/athletes/${athleteId}/profile`,
+    { token }
+  );
+}
+
+export function updateParentAthleteProfile(
+  token: string,
+  athleteId: number,
+  patch: ProfilePatch
+): Promise<ApiPlayer> {
+  return json<ApiPlayer>(
+    `/parent/athletes/${athleteId}/profile`,
+    {
+      method: 'PATCH',
+      token,
+      body: { profile: patch },
+    }
+  );
+}
 
 export function getParentAthletes(token: string): Promise<LinkedAthlete[]> {
   return json<LinkedAthlete[]>('/parent/athletes', { token });
@@ -469,6 +549,37 @@ export function linkParentAthlete(
       body: { email },
     }
   );
+}
+export type ParentOpportunityFeed = {
+  athlete: LinkedAthlete;
+  player_id: number;
+  postings: ApiPosting[];
+};
+
+export function getParentOpportunities(
+  token: string,
+  athleteId: number
+): Promise<ParentOpportunityFeed> {
+  return json<ParentOpportunityFeed>(
+    `/parent/athletes/${athleteId}/opportunities`,
+    { token }
+  );
+}
+export function createParentApplication(
+  token: string,
+  postingId: number,
+  playerProfileId: number
+): Promise<ApiConnection> {
+  return json<ApiConnection>('/connections', {
+    method: 'POST',
+    token,
+    body: {
+      connection: {
+        posting_id: postingId,
+        player_profile_id: playerProfileId,
+      },
+    },
+  });
 }
 
 // --- feeds (both scored server-side) ----------------------------------------

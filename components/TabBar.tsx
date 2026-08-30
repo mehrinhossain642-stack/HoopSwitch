@@ -28,7 +28,13 @@ const ICONS: Record<string, IconPair> = {
   activity: { active: 'options', idle: 'options-outline' },
   profile: { active: 'person', idle: 'person-outline' },
   teams: { active: 'people', idle: 'people-outline' },
+
+  applications: {
+  active: 'document-text',
+  idle: 'document-text-outline',
+},
 };
+
 
 type TabItem = {
   key: string;

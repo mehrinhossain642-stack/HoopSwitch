@@ -20,17 +20,19 @@ module Auth
     end
 
     def respond_with(resource, _opts = {})
-      render json: {
-        user: {
-          id: resource.id,
-          email: resource.email,
-          role: resource.role,
-          player_profile_id: resource.player_profile&.id,
-          team_id: resource.team&.id
-        },
-        message: "Logged in successfully"
-      }, status: :ok
-    end
+  render json: {
+    user: {
+      id: resource.id,
+      email: resource.email,
+      role: resource.role,
+      name: resource.name,
+      avatar_url: resource.avatar_url,
+      player_profile_id: resource.player_profile&.id,
+      team_id: resource.team&.id
+    },
+    message: "Logged in successfully"
+  }, status: :ok
+end
 
     # Signature mirrors Devise 5's, which passes :unauthorized when there was no
     # session to destroy and :no_content otherwise.
