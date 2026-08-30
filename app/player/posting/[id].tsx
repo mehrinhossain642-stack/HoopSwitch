@@ -593,13 +593,12 @@ const confirmApplication = useCallback(async () => {
 <Sheet
   visible={submittedOpen}
   onClose={() => {
-  setSubmittedOpen(false);
-  router.replace('/player/opportunities');
-}}
-  title="Application Submitted">
-
+    setSubmittedOpen(false);
+    router.replace('/player/opportunities');
+  }}
+  title="Application Submitted"
+>
   <View className="items-center px-6 pb-8 pt-5">
-
     <View className="h-20 w-20 items-center justify-center rounded-full bg-good-soft">
       <Ionicons
         name="checkmark"
@@ -612,41 +611,45 @@ const confirmApplication = useCallback(async () => {
       Application Submitted!
     </Text>
 
-    <Text className="font-sans mt-2 max-w-[340px] text-center text-[13px] leading-[20px] text-slate">
+    <View className="mt-3 rounded-full bg-partial-soft px-3 py-1.5">
+      <Text className="font-sans-semibold text-[12px] text-partial">
+        Pending Parent Approval
+      </Text>
+    </View>
+
+    <Text className="font-sans mt-4 max-w-[340px] text-center text-[13px] leading-[20px] text-slate">
       Your application has been sent to your parent for approval.
     </Text>
 
-    <View className="mt-6 w-full rounded-card bg-mist p-4">
-      <Text className="font-sans-bold text-[14px] text-ink">
-        What happens next?
-      </Text>
+    <Text className="font-sans mt-3 max-w-[340px] text-center text-[13px] leading-[20px] text-slate">
+      Once your parent approves it, HoopSwitch will review your application
+      and coordinate next steps with the team.
+    </Text>
 
-      <NextStep text="Your parent reviews your application." />
-      <NextStep text="Your parent confirms that your profile is accurate." />
-      <NextStep text="Once approved, your application is sent to the coach." />
-      <NextStep text="You can track the status from Activity." />
-    </View>
+    <Text className="font-sans mt-3 max-w-[340px] text-center text-[13px] leading-[20px] text-slate">
+      You can track updates anytime from your Activity page.
+    </Text>
 
     <View className="mt-6 w-full">
       <Button
         label="View Activity"
         onPress={() => {
-  setSubmittedOpen(false);
-  router.replace('/player/activity');
-}}
+          setSubmittedOpen(false);
+          router.replace('/player/activity');
+        }}
       />
     </View>
 
-   <View className="mt-2 w-full">
-  <Button
-    label="Done"
-    variant="secondary"
-    onPress={() => {
-      setSubmittedOpen(false);
-      router.replace('/player/opportunities');
-    }}
-  />
-</View>
+    <View className="mt-2 w-full">
+      <Button
+        label="Back to Opportunities"
+        variant="secondary"
+        onPress={() => {
+          setSubmittedOpen(false);
+          router.replace('/player/opportunities');
+        }}
+      />
+    </View>
   </View>
 </Sheet>
     </Screen>

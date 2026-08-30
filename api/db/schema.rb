@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_25_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_30_202832) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,8 +38,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_010000) do
     t.index ["player_profile_id"], name: "index_connections_on_player_profile_id"
     t.index ["posting_id", "player_profile_id"], name: "index_connections_on_posting_id_and_player_profile_id", unique: true
     t.index ["posting_id"], name: "index_connections_on_posting_id"
-    t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying::text, 'coach'::character varying::text])", name: "connections_initiated_by_check"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'declined'::character varying::text])", name: "connections_status_check"
+    t.check_constraint "initiated_by::text = ANY (ARRAY['player'::character varying, 'parent'::character varying, 'coach'::character varying]::text[])", name: "connections_initiated_by_check"
+    t.check_constraint "status::text = ANY (ARRAY['pending_parent_approval'::character varying, 'under_review'::character varying, 'shared_with_coach'::character varying, 'coach_interested'::character varying, 'tryout_offered'::character varying, 'confirmed'::character varying, 'declined'::character varying, 'not_selected'::character varying, 'closed'::character varying]::text[])", name: "connections_status_check"
   end
 
   create_table "game_stats", force: :cascade do |t|
@@ -192,10 +192,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_010000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.string "avatar_url"
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.string "encrypted_password", default: "", null: false
     t.string "jti", null: false
+    t.string "name"
     t.string "role", null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true

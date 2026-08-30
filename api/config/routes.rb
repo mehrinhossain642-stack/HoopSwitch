@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  get   "parent/profile", to: "parent_profiles#show"
+patch "parent/profile", to: "parent_profiles#update"
   # Health check for load balancers / uptime monitors.
   get "up" => "rails/health#show", as: :rails_health_check
 
@@ -46,9 +48,12 @@ Rails.application.routes.draw do
   get "feed/postings", to: "feeds#postings"
   get "feed/players",  to: "feeds#players"
 
-  # --- Parent ------------------------------------------------------------
-get  "parent/athletes",      to: "parent_athletes#index"
-post "parent/athletes/link", to: "parent_athletes#link"
+# --- Parent ------------------------------------------------------------
+get   "parent/athletes/:id/profile", to: "parent_athletes#profile"
+patch "parent/athletes/:id/profile", to: "parent_athletes#update_profile"
+get  "parent/athletes",                     to: "parent_athletes#index"
+post "parent/athletes/link",                to: "parent_athletes#link"
+get  "parent/athletes/:id/opportunities",   to: "parent_athletes#opportunities"
 
   # --- Connections (apply / invite, accept / decline) --------------------
   resources :connections, only: %i[index create update]

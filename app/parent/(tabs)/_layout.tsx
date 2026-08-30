@@ -13,7 +13,9 @@ export default function ParentTabsLayout() {
       }}
       tabBar={(props) => <TabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="opportunities" options={{ title: 'Opportunities' }} />
+       <Tabs.Screen name="applications" options={{ title: 'Applications' }} />
+<Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }

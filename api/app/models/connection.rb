@@ -2,8 +2,19 @@
 # inviting are the same relationship with a different initiated_by. Half the
 # tables, one status flow.
 class Connection < ApplicationRecord
-  INITIATORS = %w[player coach].freeze
-  STATUSES = %w[pending accepted declined].freeze
+  INITIATORS = %w[player parent coach].freeze
+
+STATUSES = %w[
+  pending_parent_approval
+  under_review
+  shared_with_coach
+  coach_interested
+  tryout_offered
+  confirmed
+  declined
+  not_selected
+  closed
+].freeze
 
   belongs_to :posting
   belongs_to :player_profile
@@ -14,9 +25,12 @@ class Connection < ApplicationRecord
             uniqueness: { scope: :posting_id,
                           message: "already has a connection for this posting" }
 
-  scope :applications, -> { where(initiated_by: "player") }
+  scope :applications, -> { where(initiated_by: %w[player parent]) }
   scope :invites, -> { where(initiated_by: "coach") }
-
+  
+  def parent_application?
+  initiated_by == "parent"
+end
   def application?
     initiated_by == "player"
   end
