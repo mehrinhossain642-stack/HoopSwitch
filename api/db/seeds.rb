@@ -261,12 +261,12 @@ backup_pg = Posting.find_by!(headline: "Backup PG needed for rotation")
 
 Connection.find_or_create_by!(posting: starting_pg, player_profile: marcus) do |connection|
   connection.initiated_by = "coach"   # the Mustangs invited Marcus
-  connection.status = "pending"
+  connection.status = "under_review"
 end
 
 Connection.find_or_create_by!(posting: backup_pg, player_profile: elijah) do |connection|
   connection.initiated_by = "player"  # Elijah applied to Carleton
-  connection.status = "pending"
+  connection.status = "under_review"
 end
 
 # --- An admin, plus approved games so profiles have a box score --------------
