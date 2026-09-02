@@ -1,305 +1,256 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Touchable } from '../../../components/Touchable';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
-import { AppHeader, HeaderIconButton } from '../../../components/AppHeader';
-import { Button } from '../../../components/Button';
+import {
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+
+import {
+  AppHeader,
+  HeaderIconButton,
+} from '../../../components/AppHeader';
 import { Card } from '../../../components/Card';
-import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { Screen, useContentContainerStyle } from '../../../components/Screen';
-import { EmptyState, InlineError, ScreenError } from '../../../components/ScreenState';
-import { Segmented } from '../../../components/Segmented';
-import { FeedSkeleton } from '../../../components/Skeleton';
-import { Reveal } from '../../../components/Touchable';
+import {
+  Screen,
+  useContentContainerStyle,
+} from '../../../components/Screen';
+import {
+  ScreenError,
+  ScreenLoading,
+} from '../../../components/ScreenState';
+
 import * as api from '../../../lib/api';
-import type { ApiGame, GameStatus } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
-import { relativeTime } from '../../../lib/time';
 import { useThemeColors } from '../../../lib/theme';
-import { errorMessage, useApiData } from '../../../lib/useApi';
+import { useApiData } from '../../../lib/useApi';
 
-const FILTERS = [
-  { value: 'pending' as GameStatus, label: 'Pending' },
-  { value: 'approved' as GameStatus, label: 'Approved' },
-  { value: 'rejected' as GameStatus, label: 'Rejected' },
-];
+const METRICS = [
+  {
+    key: 'pending_applications',
+    label: 'Pending Applications',
+    description: 'Need admin review',
+    icon: 'document-text-outline',
+  },
+  {
+    key: 'active_opportunities',
+    label: 'Active Opportunities',
+    description: 'Published roster openings',
+    icon: 'basketball-outline',
+  },
+  {
+    key: 'pending_stat_requests',
+    label: 'Stat Requests',
+    description: 'Awaiting approval',
+    icon: 'stats-chart-outline',
+  },
+  {
+    key: 'registered_athletes',
+    label: 'Registered Athletes',
+    description: 'Player accounts',
+    icon: 'people-outline',
+  },
+] as const;
 
-/**
- * The admin review queue.
- *
- * A coach's upload sits here until it's decided. Approving folds the game into
- * every listed player's averages — which changes how every *other* team ranks
- * them — so each game shows its full lines rather than just a count. Reviewing
- * without the numbers would only be rubber-stamping.
- */
-export default function AdminApprovals() {
+export default function AdminDashboard() {
   const router = useRouter();
   const { requireToken, token } = useSession();
   const colors = useThemeColors();
-  const contentStyle = useContentContainerStyle({ measure: 'wide', paddingTop: 16 });
 
-  const [filter, setFilter] = useState<GameStatus>('pending');
-  const [error, setError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<number | null>(null);
-  const [rejecting, setRejecting] = useState<ApiGame | null>(null);
+  const contentStyle = useContentContainerStyle({
+    measure: 'wide',
+    paddingTop: 18,
+  });
 
-  const feed = useApiData(() => api.listGames(requireToken(), filter), [token, filter]);
-
-  const decide = useCallback(
-    async (game: ApiGame, status: 'approved' | 'rejected') => {
-      if (pendingId !== null) return;
-      setError(null);
-      setPendingId(game.id);
-      try {
-        await api.reviewGame(requireToken(), game.id, status);
-        feed.refetch();
-      } catch (caught) {
-        setError(errorMessage(caught));
-      } finally {
-        setPendingId(null);
-        setRejecting(null);
-      }
-    },
-    [feed, requireToken, pendingId]
+  const dashboard = useApiData(
+    () => api.getAdminDashboard(requireToken()),
+    [token]
   );
 
-  if (feed.error && !feed.data) {
-    return <ScreenError message={feed.error} onRetry={feed.refetch} />;
+  if (dashboard.loading && !dashboard.data) {
+    return <ScreenLoading label="Loading dashboard" />;
   }
 
-  const games = feed.data?.games ?? [];
-  const loadingFirst = feed.loading && !feed.data;
+  if (dashboard.error && !dashboard.data) {
+    return (
+      <ScreenError
+        message={dashboard.error}
+        onRetry={dashboard.refetch}
+      />
+    );
+  }
 
-  const header = (
-    <AppHeader
-      title="Approvals"
-      eyebrow="Admin"
-      meta={
-        loadingFirst
-          ? 'Loading'
-          : `${games.length} ${games.length === 1 ? 'game' : 'games'} · ${filter}`
-      }
-      right={
-        <View className="flex-row items-center">
-          <HeaderIconButton
-            icon="cloud-upload-outline"
-            label="Upload a game"
-            onPress={() => router.push('/admin/statsheet')}
-          />
-          <View className="w-2" />
+  if (!dashboard.data) {
+    return null;
+  }
+
+  const data = dashboard.data;
+
+  return (
+    <Screen edges={[]}>
+      <AppHeader
+        title="Admin Dashboard"
+        eyebrow="HoopSwitch"
+        meta="Platform overview"
+        right={
           <HeaderIconButton
             icon="settings-outline"
             label="Settings"
             onPress={() => router.push('/admin/settings')}
           />
-        </View>
-      }>
-      <Segmented segments={FILTERS} value={filter} onChange={setFilter} onDark />
-    </AppHeader>
-  );
+        }
+      />
+
+      <ScrollView
+        contentContainerStyle={contentStyle}
+        refreshControl={
+          <RefreshControl
+            refreshing={dashboard.loading}
+            onRefresh={dashboard.refetch}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        <View className="-mx-1.5 flex-row flex-wrap">
+          {METRICS.map((metric) => {
+  const openMetric = () => {
+    switch (metric.key) {
+      case 'pending_applications':
+        router.push('/admin/applications');
+        break;
+
+      case 'active_opportunities':
+        router.push('/admin/opportunities');
+        break;
+
+      case 'pending_stat_requests':
+        router.push('/admin/stats');
+        break;
+
+      case 'registered_athletes':
+        router.push('/admin/users');
+        break;
+    }
+  };
 
   return (
-    <Screen edges={[]}>
-      {header}
-
-      {loadingFirst ? (
-        <View style={contentStyle}>
-          <FeedSkeleton />
-        </View>
-      ) : (
-        <FlatList
-          data={games}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={contentStyle}
-          refreshControl={
-            <RefreshControl
-              refreshing={feed.loading}
-              onRefresh={feed.refetch}
-              tintColor={colors.primary}
-            />
-          }
-          ListHeaderComponent={
-            error ? <InlineError message={error} onRetry={() => setError(null)} /> : null
-          }
-          renderItem={({ item, index }) => (
-            <Reveal index={index}>
-              <GameCard
-                game={item}
-                busy={pendingId === item.id}
-                onApprove={() => decide(item, 'approved')}
-                onReject={() => setRejecting(item)}
+    <View
+      key={metric.key}
+      className="w-1/2 px-1.5 pb-3 lg:w-1/4"
+    >
+      <Touchable
+        onPress={openMetric}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${metric.label}`}
+        scaleTo={0.98}
+        dimTo={0.85}
+      >
+        <Card className="min-h-[145px]">
+          <View className="flex-row items-start justify-between">
+            <View className="h-10 w-10 items-center justify-center rounded-md bg-primary-soft">
+              <Ionicons
+                name={metric.icon}
+                size={20}
+                color={colors.primary}
               />
-            </Reveal>
-          )}
-          ListEmptyComponent={
-            <EmptyState
-              icon={filter === 'pending' ? 'checkmark-done-outline' : 'document-outline'}
-              title={filter === 'pending' ? 'Nothing to review' : `No ${filter} games`}
-              body={
-                filter === 'pending'
-                  ? "Coach uploads land here for approval. There's nothing waiting right now."
-                  : `No games have been ${filter} yet.`
-              }
-            />
-          }
-        />
-      )}
+            </View>
 
-      <ConfirmDialog
-        visible={rejecting !== null}
-        icon="close-circle-outline"
-        destructive
-        busy={pendingId !== null}
-        title="Reject this game?"
-        body={
-          rejecting
-            ? `${rejecting.opponent} on ${rejecting.played_on} won't count toward anyone's ` +
-              `averages. ${rejecting.uploaded_by_email ?? 'The uploader'} can correct and resubmit.`
-            : ''
-        }
-        confirmLabel="Reject"
-        cancelLabel="Keep pending"
-        onConfirm={() => rejecting && decide(rejecting, 'rejected')}
-        onCancel={() => setRejecting(null)}
-      />
+            <Ionicons
+              name="arrow-forward-outline"
+              size={16}
+              color={colors.slate}
+            />
+          </View>
+
+          <Text className="font-stat mt-3 text-[30px] tracking-stat text-ink">
+            {data[metric.key]}
+          </Text>
+
+          <Text className="font-sans-semibold mt-1 text-[12px] text-ink">
+            {metric.label}
+          </Text>
+
+          <Text className="font-sans mt-1 text-[10px] text-slate">
+            {metric.description}
+          </Text>
+        </Card>
+      </Touchable>
+    </View>
+  );
+})}
+</View>
+
+        <Text className="font-display mb-3 mt-4 text-[19px] text-ink">
+          Admin priorities
+        </Text>
+
+        <PriorityCard
+          icon="person-add-outline"
+          title="Teams without linked accounts"
+          description="The coach is listed, but does not have a HoopSwitch account."
+          value={data.teams_without_accounts}
+        />
+
+        <PriorityCard
+          icon="time-outline"
+          title="Waiting for parent approval"
+          description="No admin action is required until the parent responds."
+          value={data.waiting_for_parent}
+        />
+
+        <PriorityCard
+          icon="document-text-outline"
+          title="Applications needing review"
+          description="Review athletes before sharing their profiles with coaches."
+          value={data.pending_applications}
+        />
+      </ScrollView>
     </Screen>
   );
 }
 
-const STATUS_TONE: Record<GameStatus, { fill: string; text: string; label: string }> = {
-  pending: { fill: 'bg-partial-soft', text: 'text-partial', label: 'AWAITING REVIEW' },
-  approved: { fill: 'bg-good-soft', text: 'text-good', label: 'APPROVED' },
-  rejected: { fill: 'bg-danger-soft', text: 'text-danger', label: 'REJECTED' },
-};
-
-function GameCard({
-  game,
-  busy,
-  onApprove,
-  onReject,
+function PriorityCard({
+  icon,
+  title,
+  description,
+  value,
 }: {
-  game: ApiGame;
-  busy: boolean;
-  onApprove: () => void;
-  onReject: () => void;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+  value: number;
 }) {
   const colors = useThemeColors();
-  const tone = STATUS_TONE[game.status];
 
   return (
-    <Card bare className="mb-3">
-      <View className="p-4">
-        <View className="flex-row items-start">
-          <View className="flex-1 pr-3">
-            <Text className="font-display text-[16px] text-ink" numberOfLines={1}>
-              {game.team_name} vs {game.opponent}
-            </Text>
-            <Text className="font-sans mt-0.5 text-[11px] text-slate">
-              {game.played_on} · {game.player_count}{' '}
-              {game.player_count === 1 ? 'player' : 'players'}
-            </Text>
-          </View>
-          <View className={`rounded-full px-2 py-1 ${tone.fill}`}>
-            <Text className={`font-stat text-[11px] tracking-eyebrow ${tone.text}`}>
-              {tone.label}
-            </Text>
-          </View>
+    <Card className="mb-3">
+      <View className="flex-row items-center">
+        <View className="h-10 w-10 items-center justify-center rounded-md bg-primary-soft">
+          <Ionicons
+            name={icon}
+            size={19}
+            color={colors.primary}
+          />
         </View>
 
-        <View className="mt-2 flex-row items-center">
-          <Ionicons name="person-circle-outline" size={14} color={colors.slate} />
-          <Text className="font-sans ml-1.5 flex-1 text-[11px] text-slate" numberOfLines={1}>
-            {game.uploaded_by_email} ({game.uploaded_by_role})
-            {game.reviewed_by_email
-              ? ` · reviewed by ${game.reviewed_by_email}${
-                  game.reviewed_at ? ` ${relativeTime(game.reviewed_at)}` : ''
-                }`
-              : ''}
+        <View className="ml-3 flex-1">
+          <Text className="font-sans-semibold text-[13px] text-ink">
+            {title}
+          </Text>
+
+          <Text className="font-sans mt-1 text-[11px] leading-[16px] text-slate">
+            {description}
           </Text>
         </View>
 
-        {game.review_note ? (
-          <Text className="font-sans mt-1.5 text-[11px] italic text-slate">
-            “{game.review_note}”
+        <View className="ml-3 rounded-full bg-primary-soft px-3 py-1">
+          <Text className="font-stat text-[14px] text-primary">
+            {value}
           </Text>
-        ) : null}
+        </View>
       </View>
-
-      {/* The lines being approved. Without these, approval is a rubber stamp. */}
-      {game.stats && game.stats.length > 0 ? (
-        <View className="border-t border-border bg-bg px-4 py-3">
-          <View className="flex-row pb-1.5">
-            <Text className="font-sans-semibold flex-1 text-[9px] tracking-eyebrow text-slate">
-              PLAYER
-            </Text>
-            {['MIN', 'FG', 'REB', 'AST', 'PTS'].map((label) => (
-              <Text
-                key={label}
-                className="font-sans-semibold text-center text-[9px] tracking-eyebrow text-slate"
-                style={{ width: label === 'FG' ? 48 : 36 }}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
-          {game.stats.map((line) => (
-            <View key={line.id} className="flex-row items-center py-1">
-              <Text className="font-sans-medium flex-1 text-[12px] text-ink" numberOfLines={1}>
-                {line.player_name}
-              </Text>
-              <Cell width={36}>{line.minutes}</Cell>
-              <Cell width={48}>{`${line.fgm}-${line.fga}`}</Cell>
-              <Cell width={36}>{line.reb}</Cell>
-              <Cell width={36}>{line.ast}</Cell>
-              <Cell width={36} emphasis>
-                {line.pts}
-              </Cell>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {game.status === 'pending' ? (
-        <View className="flex-row border-t border-border bg-bg px-4 py-3">
-          <Button
-            label="Reject"
-            variant="danger"
-            size="sm"
-            onPress={onReject}
-            disabled={busy}
-            fullWidth={false}
-            className="mr-2 flex-1"
-          />
-          <Button
-            label="Approve"
-            size="sm"
-            onPress={onApprove}
-            loading={busy}
-            fullWidth={false}
-            className="flex-1"
-          />
-        </View>
-      ) : null}
     </Card>
-  );
-}
-
-function Cell({
-  children,
-  width,
-  emphasis = false,
-}: {
-  children: React.ReactNode;
-  width: number;
-  emphasis?: boolean;
-}) {
-  return (
-    <Text
-      className={`font-stat-bold text-center tracking-stat text-ink ${
-        emphasis ? 'text-[16px]' : 'text-[14px]'
-      }`}
-      style={{ width }}>
-      {children}
-    </Text>
   );
 }

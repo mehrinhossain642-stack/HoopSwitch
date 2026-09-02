@@ -1,30 +1,21 @@
-import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, Text, View } from 'react-native';
 
+import { Button } from '../../../components/Button';
+import { Card } from '../../../components/Card';
 import { Screen } from '../../../components/Screen';
 import { InlineError } from '../../../components/ScreenState';
-
+import { Touchable } from '../../../components/Touchable';
 import {
   listConnections,
   reviewParentApplication,
   type ApiConnection,
 } from '../../../lib/api';
-
 import { useSession } from '../../../lib/session';
+import { useThemeColors } from '../../../lib/theme';
 import { errorMessage } from '../../../lib/useApi';
-
-const ACCENT = '#F45B2A';
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString('en-US', {
@@ -35,69 +26,42 @@ function formatDate(date: string) {
 }
 
 function statusLabel(status: string) {
-  switch (status) {
-    case 'pending_parent_approval':
-      return 'Pending Approval';
+  const labels: Record<string, string> = {
+    pending_parent_approval: 'Pending Approval',
+    under_review: 'Under Review',
+    shared_with_coach: 'Shared With Coach',
+    coach_interested: 'Coach Interested',
+    tryout_offered: 'Tryout Offered',
+    confirmed: 'Approved',
+    declined: 'Declined',
+    not_selected: 'Not Selected',
+    closed: 'Closed',
+  };
 
-    case 'under_review':
-      return 'Under Review';
-
-    case 'shared_with_coach':
-      return 'Shared With Coach';
-
-    case 'coach_interested':
-      return 'Coach Interested';
-
-    case 'tryout_offered':
-      return 'Tryout Offered';
-
-    case 'confirmed':
-      return 'Approved';
-
-    case 'declined':
-      return 'Declined';
-
-    case 'not_selected':
-      return 'Not Selected';
-
-    case 'closed':
-      return 'Closed';
-
-    default:
-      return status;
-  }
+  return labels[status] ?? status.replaceAll('_', ' ');
 }
 
 export default function ParentApplicationDetail() {
   const router = useRouter();
-
-  const { id } =
-    useLocalSearchParams<{ id: string }>();
-
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { requireToken } = useSession();
+  const colors = useThemeColors();
 
   const [application, setApplication] =
     useState<ApiConnection | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadApplication();
-  }, [id]);
-
-  async function loadApplication() {
+  const loadApplication = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      const result =
-        await listConnections(requireToken());
+      const result = await listConnections(requireToken());
 
       const found = result.connections.find(
-        (connection) =>
-          connection.id === Number(id)
+        (item) => item.id === Number(id)
       );
 
       if (!found) {
@@ -111,7 +75,11 @@ export default function ParentApplicationDetail() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id, requireToken]);
+
+  useEffect(() => {
+    void loadApplication();
+  }, [loadApplication]);
 
   async function approveApplication() {
     if (!application) return;
@@ -120,12 +88,11 @@ export default function ParentApplicationDetail() {
       setSubmitting(true);
       setError('');
 
-      const updated =
-        await reviewParentApplication(
-          requireToken(),
-          application.id,
-          'under_review'
-        );
+      const updated = await reviewParentApplication(
+        requireToken(),
+        application.id,
+        'under_review'
+      );
 
       setApplication(updated);
 
@@ -165,15 +132,13 @@ export default function ParentApplicationDetail() {
               setSubmitting(true);
               setError('');
 
-              const updated =
-                await reviewParentApplication(
-                  requireToken(),
-                  application.id,
-                  'declined'
-                );
+              const updated = await reviewParentApplication(
+                requireToken(),
+                application.id,
+                'declined'
+              );
 
               setApplication(updated);
-
               router.back();
             } catch (err) {
               setError(errorMessage(err));
@@ -217,8 +182,7 @@ export default function ParentApplicationDetail() {
   const athlete = application.athlete;
 
   const needsApproval =
-    application.status ===
-    'pending_parent_approval';
+    application.status === 'pending_parent_approval';
 
   return (
     <Screen edges={[]}>
@@ -228,426 +192,200 @@ export default function ParentApplicationDetail() {
           paddingBottom: 60,
         }}
       >
-        <View
-          style={{
-            width: '100%',
-            maxWidth: 620,
-            alignSelf: 'center',
-            paddingHorizontal: 24,
-            paddingTop: 30,
-          }}
-        >
-          {/* BACK */}
-          <Pressable
+        <View className="w-full max-w-[620px] self-center px-6 pt-8">
+          <Touchable
             onPress={() => router.back()}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: '#E4E6E8',
-              backgroundColor: '#FFFFFF',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 22,
-            }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            className="mb-6 h-10 w-10 items-center justify-center rounded-full border border-border bg-surface"
           >
             <Ionicons
               name="chevron-back"
               size={20}
-              color="#202226"
+              color={colors.ink}
             />
-          </Pressable>
+          </Touchable>
 
-          <Text
-            className="font-display text-ink"
-            style={{
-              fontSize: 29,
-            }}
-          >
+          <Text className="font-display text-[29px] text-ink">
             Review Application
           </Text>
 
-          <Text
-            className="font-sans text-slate"
-            style={{
-              marginTop: 5,
-              fontSize: 14,
-            }}
-          >
-            Review the opportunity before approving
-            your athlete&apos;s application.
+          <Text className="font-sans mt-1 text-[14px] text-slate">
+            Review the opportunity before approving your athlete&apos;s
+            application.
           </Text>
 
           {error ? (
-            <View style={{ marginTop: 20 }}>
+            <View className="mt-5">
               <InlineError message={error} />
             </View>
           ) : null}
 
-          {/* TEAM / OPPORTUNITY */}
-          <View
-            style={{
-              marginTop: 28,
-              padding: 22,
-              borderWidth: 1,
-              borderColor: '#E4E6E8',
-              borderRadius: 16,
-              backgroundColor: '#FFFFFF',
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 18,
-                  backgroundColor: '#F2F3F4',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 16,
-                }}
-              >
+          <Card bare className="mt-7">
+            <View className="flex-row items-center p-5">
+              <View className="mr-4 h-16 w-16 items-center justify-center rounded-2xl bg-mist">
                 <Ionicons
                   name="basketball-outline"
                   size={29}
-                  color="#333"
+                  color={colors.ink}
                 />
               </View>
 
-              <View style={{ flex: 1 }}>
-                <Text
-                  className="font-sans-semibold text-ink"
-                  style={{
-                    fontSize: 19,
-                  }}
-                >
-                  {team?.name ??
-                    'Basketball Team'}
+              <View className="flex-1">
+                <Text className="font-sans-semibold text-[19px] text-ink">
+                  {team?.name ?? 'Basketball Team'}
                 </Text>
 
                 {team?.location ? (
-                  <Text
-                    className="font-sans text-slate"
-                    style={{
-                      fontSize: 13,
-                      marginTop: 4,
-                    }}
-                  >
+                  <Text className="font-sans mt-1 text-[13px] text-slate">
                     {team.location}
                   </Text>
                 ) : null}
 
                 <View
+                  className="mt-2 self-start rounded-md border px-2.5 py-1"
                   style={{
-                    alignSelf: 'flex-start',
-                    marginTop: 9,
-                    borderRadius: 7,
-                    paddingHorizontal: 9,
-                    paddingVertical: 5,
-                    backgroundColor: '#FFF3E8',
-                    borderWidth: 1,
-                    borderColor: '#FFD7B8',
+                    backgroundColor: colors.partialSoft,
+                    borderColor: colors.partial,
                   }}
                 >
                   <Text
-                    className="font-sans-semibold"
+                    className="font-sans-semibold text-[11px]"
                     style={{
-                      color: '#E36D18',
-                      fontSize: 11,
+                      color: colors.partial,
                     }}
                   >
-                    {statusLabel(
-                      application.status
-                    )}
+                    {statusLabel(application.status)}
                   </Text>
                 </View>
               </View>
             </View>
-          </View>
+          </Card>
 
-          {/* POSTING DETAILS */}
-          <View
-            style={{
-              marginTop: 16,
-              padding: 22,
-              borderWidth: 1,
-              borderColor: '#E4E6E8',
-              borderRadius: 16,
-              backgroundColor: '#FFFFFF',
-            }}
-          >
-            <Text
-              className="font-display text-ink"
-              style={{
-                fontSize: 19,
-              }}
-            >
+          <Card className="mt-4">
+            <Text className="font-display text-[19px] text-ink">
               Opportunity Overview
             </Text>
 
-            <View style={{ marginTop: 18 }}>
-              <Text
-                className="font-sans text-slate"
-                style={{
-                  fontSize: 11,
-                }}
-              >
-                OPPORTUNITY
-              </Text>
-
-              <Text
-                className="font-sans-semibold text-ink"
-                style={{
-                  fontSize: 15,
-                  marginTop: 4,
-                }}
-              >
-                {posting?.headline ??
-                  'Basketball Opportunity'}
-              </Text>
-            </View>
+            <Detail
+              label="Opportunity"
+              value={
+                posting?.headline ?? 'Basketball Opportunity'
+              }
+            />
 
             {posting?.position ? (
-              <View style={{ marginTop: 18 }}>
-                <Text
-                  className="font-sans text-slate"
-                  style={{ fontSize: 11 }}
-                >
-                  POSITION
-                </Text>
-
-                <Text
-                  className="font-sans-semibold text-ink"
-                  style={{
-                    marginTop: 4,
-                    fontSize: 14,
-                  }}
-                >
-                  {posting.position}
-                </Text>
-              </View>
+              <Detail
+                label="Position"
+                value={posting.position}
+              />
             ) : null}
 
             {posting?.expected_minutes ? (
-              <View style={{ marginTop: 18 }}>
-                <Text
-                  className="font-sans text-slate"
-                  style={{ fontSize: 11 }}
-                >
-                  EXPECTED MINUTES
-                </Text>
-
-                <Text
-                  className="font-sans-semibold text-ink"
-                  style={{
-                    marginTop: 4,
-                    fontSize: 14,
-                  }}
-                >
-                  {posting.expected_minutes} minutes
-                </Text>
-              </View>
+              <Detail
+                label="Expected minutes"
+                value={`${posting.expected_minutes} minutes`}
+              />
             ) : null}
 
             {posting?.notes ? (
-              <View style={{ marginTop: 18 }}>
-                <Text
-                  className="font-sans text-slate"
-                  style={{ fontSize: 11 }}
-                >
-                  DETAILS
-                </Text>
-
-                <Text
-                  className="font-sans text-ink"
-                  style={{
-                    marginTop: 5,
-                    fontSize: 13,
-                    lineHeight: 20,
-                  }}
-                >
-                  {posting.notes}
-                </Text>
-              </View>
+              <Detail
+                label="Details"
+                value={posting.notes}
+                multiline
+              />
             ) : null}
-          </View>
+          </Card>
 
-          {/* ATHLETE */}
-          <View
-            style={{
-              marginTop: 16,
-              padding: 22,
-              borderWidth: 1,
-              borderColor: '#E4E6E8',
-              borderRadius: 16,
-              backgroundColor: '#FFFFFF',
-            }}
-          >
-            <Text
-              className="font-display text-ink"
-              style={{
-                fontSize: 19,
-              }}
-            >
+          <Card className="mt-4">
+            <Text className="font-display text-[19px] text-ink">
               Athlete
             </Text>
 
-            <Text
-              className="font-sans-semibold text-ink"
-              style={{
-                fontSize: 15,
-                marginTop: 14,
-              }}
-            >
+            <Text className="font-sans-semibold mt-4 text-[15px] text-ink">
               {athlete?.name ?? 'Athlete'}
             </Text>
 
             {athlete?.position ? (
-              <Text
-                className="font-sans text-slate"
-                style={{
-                  fontSize: 13,
-                  marginTop: 4,
-                }}
-              >
+              <Text className="font-sans mt-1 text-[13px] text-slate">
                 {athlete.position}
               </Text>
             ) : null}
 
-            <Text
-              className="font-sans text-slate"
-              style={{
-                fontSize: 12,
-                marginTop: 12,
-              }}
-            >
+            <Text className="font-sans mt-3 text-[12px] text-slate">
               Applied {formatDate(application.created_at)}
             </Text>
-          </View>
+          </Card>
 
-          {/* APPROVAL */}
           {needsApproval ? (
-            <View
-              style={{
-                marginTop: 20,
-                padding: 22,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: '#FFD9C9',
-                backgroundColor: '#FFF9F6',
-              }}
-            >
-              <Text
-                className="font-sans-semibold text-ink"
-                style={{
-                  fontSize: 17,
-                }}
-              >
+            <Card className="mt-5">
+              <Text className="font-sans-semibold text-[17px] text-ink">
                 Your approval is required
               </Text>
 
-              <Text
-                className="font-sans text-slate"
-                style={{
-                  marginTop: 7,
-                  fontSize: 13,
-                  lineHeight: 20,
-                }}
-              >
-                By approving, you allow this
-                application to move forward to
-                HoopSwitch for review.
+              <Text className="font-sans mt-2 text-[13px] leading-5 text-slate">
+                By approving, you allow this application to move
+                forward to HoopSwitch for review.
               </Text>
 
-              <Pressable
-                disabled={submitting}
-                onPress={approveApplication}
-                style={{
-                  marginTop: 20,
-                  height: 50,
-                  borderRadius: 12,
-                  backgroundColor: ACCENT,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: submitting ? 0.6 : 1,
-                }}
-              >
-                <Text
-                  className="font-sans-semibold"
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 14,
-                  }}
-                >
-                  {submitting
-                    ? 'Processing...'
-                    : 'Approve Application'}
-                </Text>
-              </Pressable>
+              <View className="mt-5">
+                <Button
+                  label="Approve Application"
+                  loading={submitting}
+                  onPress={approveApplication}
+                />
+              </View>
 
-              <Pressable
-                disabled={submitting}
-                onPress={declineApplication}
-                style={{
-                  marginTop: 10,
-                  height: 48,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: '#E3E5E8',
-                  backgroundColor: '#FFFFFF',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text
-                  className="font-sans-semibold"
-                  style={{
-                    color: '#C94C4C',
-                    fontSize: 14,
-                  }}
-                >
-                  Decline
-                </Text>
-              </Pressable>
-            </View>
+              <View className="mt-2">
+                <Button
+                  label="Decline"
+                  variant="danger"
+                  disabled={submitting}
+                  onPress={declineApplication}
+                />
+              </View>
+            </Card>
           ) : (
-            <View
-              style={{
-                marginTop: 20,
-                padding: 20,
-                borderRadius: 15,
-                backgroundColor: '#EEF7FF',
-                borderWidth: 1,
-                borderColor: '#D8EAFE',
-              }}
-            >
-              <Text
-                className="font-sans-semibold text-ink"
-                style={{ fontSize: 14 }}
-              >
+            <Card className="mt-5">
+              <Text className="font-sans-semibold text-[14px] text-ink">
                 {statusLabel(application.status)}
               </Text>
 
-              <Text
-                className="font-sans text-slate"
-                style={{
-                  marginTop: 5,
-                  fontSize: 12.5,
-                }}
-              >
-                No action is currently required
-                from you.
+              <Text className="font-sans mt-1 text-[13px] text-slate">
+                No action is currently required from you.
               </Text>
-            </View>
+            </Card>
           )}
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <View className="mt-5">
+      <Text className="font-stat text-[11px] uppercase tracking-eyebrow text-slate">
+        {label}
+      </Text>
+
+      <Text
+        className={`font-sans mt-1 text-ink ${
+          multiline
+            ? 'text-[13px] leading-5'
+            : 'font-sans-semibold text-[14px]'
+        }`}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }

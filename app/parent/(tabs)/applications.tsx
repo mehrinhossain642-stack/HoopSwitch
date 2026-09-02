@@ -13,6 +13,7 @@ import { Screen } from '../../../components/Screen';
 import { InlineError } from '../../../components/ScreenState';
 import { listConnections, type ApiConnection } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
+import { useThemeColors } from '../../../lib/theme';
 import { errorMessage } from '../../../lib/useApi';
 
 type FilterType = 'all' | 'pending' | 'approved' | 'declined';
@@ -149,8 +150,9 @@ function teamInitials(name?: string | null) {
 }
 
 export default function ParentApplications() {
-    const router = useRouter();
+  const router = useRouter();
   const { requireToken } = useSession();
+  const themeColors = useThemeColors();
 
   const [applications, setApplications] = useState<ApiConnection[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -253,8 +255,8 @@ export default function ParentApplications() {
                     marginRight: 9,
                     borderRadius: 11,
                     borderWidth: 1,
-                    borderColor: active ? ACCENT : '#E3E5E8',
-                    backgroundColor: active ? ACCENT : '#FFFFFF',
+                    borderColor: active ? ACCENT : themeColors.border,
+                    backgroundColor: active ? ACCENT : themeColors.surface,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -263,7 +265,7 @@ export default function ParentApplications() {
                     className="font-sans-semibold"
                     style={{
                       fontSize: 13,
-                      color: active ? '#FFFFFF' : '#303238',
+                      color: active ? '#FFFFFF' : themeColors.ink,
                     }}
                   >
                     {item.label}
@@ -304,8 +306,8 @@ export default function ParentApplications() {
                 alignItems: 'center',
                 borderRadius: 15,
                 borderWidth: 1,
-                borderColor: '#E5E7EA',
-                backgroundColor: '#FFFFFF',
+                borderColor: themeColors.border,
+                backgroundColor: themeColors.surface,
               }}
             >
               <View
@@ -377,13 +379,10 @@ export default function ParentApplications() {
                       borderRadius: 14,
                       borderWidth: 1,
 
-                      borderColor: pressed
-                        ? '#D9DBDE'
-                        : '#E4E6E8',
-
+                      borderColor: themeColors.border,
                       backgroundColor: pressed
-                        ? '#FAFAFA'
-                        : '#FFFFFF',
+                        ? themeColors.mist
+                        : themeColors.surface,
 
                       flexDirection: 'row',
                       alignItems: 'center',
@@ -408,7 +407,7 @@ export default function ParentApplications() {
                           height: 66,
                           borderRadius: 18,
                           marginRight: 18,
-                          backgroundColor: '#F4F5F6',
+                          backgroundColor: themeColors.mist,
                         }}
                         resizeMode="contain"
                       />
@@ -423,16 +422,16 @@ export default function ParentApplications() {
                           alignItems: 'center',
                           justifyContent: 'center',
 
-                          backgroundColor: '#F5F6F7',
+                          backgroundColor: themeColors.mist,
                           borderWidth: 1,
-                          borderColor: '#E4E6E8',
+                          borderColor: themeColors.border,
                         }}
                       >
                         <Text
                           className="font-display"
                           style={{
                             fontSize: 17,
-                            color: '#292B2F',
+                            color: themeColors.ink,
                           }}
                         >
                           {teamInitials(teamName)}

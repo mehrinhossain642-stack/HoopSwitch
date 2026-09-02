@@ -1,61 +1,58 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, Text, View } from 'react-native';
 
 import { AppHeader } from '../../../components/AppHeader';
+import { Avatar } from '../../../components/Avatar';
+import { Button } from '../../../components/Button';
+import { Card } from '../../../components/Card';
 import { Screen } from '../../../components/Screen';
 import { InlineError } from '../../../components/ScreenState';
-
+import { Touchable } from '../../../components/Touchable';
 import {
   getParentAthletes,
   getParentProfile,
   type ApiUser,
   type LinkedAthlete,
 } from '../../../lib/api';
-
 import { useSession } from '../../../lib/session';
+import { useThemeColors } from '../../../lib/theme';
 import { errorMessage } from '../../../lib/useApi';
-
-const ACCENT = '#F45B2A';
 
 export default function ParentProfile() {
   const { requireToken, signOut } = useSession();
-  const [parent, setParent] = useState<ApiUser | null>(null);
+  const colors = useThemeColors();
 
+  const [parent, setParent] = useState<ApiUser | null>(null);
   const [athletes, setAthletes] = useState<LinkedAthlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const loadProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const [parentResult, athleteResult] = await Promise.all([
+        getParentProfile(requireToken()),
+        getParentAthletes(requireToken()),
+      ]);
+
+      setParent(parentResult);
+      setAthletes(athleteResult);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [requireToken]);
+
   useFocusEffect(
-  useCallback(() => {
-    loadProfile();
-  }, [])
-);
-
-  async function loadProfile() {
-  try {
-    setLoading(true);
-    setError('');
-
-    const [parentResult, athleteResult] = await Promise.all([
-      getParentProfile(requireToken()),
-      getParentAthletes(requireToken()),
-    ]);
-
-    setParent(parentResult);
-    setAthletes(athleteResult);
-  } catch (err) {
-    setError(errorMessage(err));
-  } finally {
-    setLoading(false);
-  }
-}
+    useCallback(() => {
+      void loadProfile();
+    }, [loadProfile])
+  );
 
   async function handleSignOut() {
     await signOut();
@@ -63,14 +60,6 @@ export default function ParentProfile() {
   }
 
   const athlete = athletes[0];
-  const parentInitials =
-  parent?.name
-    ?.split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase() ?? 'P';
 
   return (
     <Screen edges={[]}>
@@ -78,404 +67,200 @@ export default function ParentProfile() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingBottom: 60,
-        }}
+        contentContainerStyle={{ paddingBottom: 60 }}
       >
-        <View
-          style={{
-            width: '100%',
-            maxWidth: 560,
-            alignSelf: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 28,
-          }}
-        >
-          <Text
-            className="font-display text-ink"
-            style={{
-              fontSize: 29,
-              lineHeight: 34,
-            }}
-          >
+        <View className="w-full max-w-[560px] self-center px-5 pt-7">
+          <Text className="font-display text-[29px] leading-[34px] text-ink">
             Profile
           </Text>
 
-          <Text
-            className="font-sans text-slate"
-            style={{
-              marginTop: 5,
-              fontSize: 14,
-            }}
-          >
+          <Text className="font-sans mt-1 text-[14px] text-slate">
             Manage your parent account and linked athlete.
           </Text>
 
           {error ? (
-            <View style={{ marginTop: 20 }}>
+            <View className="mt-5">
               <InlineError message={error} />
             </View>
           ) : null}
 
           {loading ? (
-            <View
-              style={{
-                paddingVertical: 90,
-                alignItems: 'center',
-              }}
-            >
+            <View className="items-center py-24">
               <Text className="font-sans text-[14px] text-slate">
                 Loading profile...
               </Text>
             </View>
-     ) : (
-       <>
-    {/* ACCOUNT */}
-<Text
-  className="font-sans-semibold text-ink"
-  style={{
-    marginTop: 30,
-    marginBottom: 11,
-    fontSize: 15,
-  }}
->
-  Account
-</Text>
+          ) : (
+            <>
+              <Text className="font-sans-semibold mb-3 mt-8 text-[15px] text-ink">
+                Account
+              </Text>
 
-<Pressable
-  onPress={() => router.push('/parent/settings')}
-  style={{
-    borderWidth: 1,
-    borderColor: '#E5E7EA',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  }}
->
-  <View
-    style={{
-      padding: 18,
-      flexDirection: 'row',
-      alignItems: 'center',
-    }}
-  >
-    <View
-      style={{
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: '#FFF1EB',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text
-        className="font-display"
-        style={{
-          fontSize: 16,
-          color: ACCENT,
-        }}
-      >
-        {parentInitials}
-      </Text>
-    </View>
+              <Touchable
+                onPress={() => router.push('/parent/settings')}
+                accessibilityRole="button"
+                accessibilityLabel="Edit parent profile"
+                scaleTo={0.99}
+                dimTo={0.85}
+              >
+                <Card bare>
+                  <View className="flex-row items-center p-4">
+                    <Avatar
+                      name={parent?.name?.trim() || parent?.email || 'Parent'}
+                      size={54}
+                    />
 
-    <View
-      style={{
-        flex: 1,
-        marginLeft: 14,
-      }}
-    >
-      <Text
-        className="font-sans-semibold text-ink"
-        style={{
-          fontSize: 16,
-        }}
-      >
-        {parent?.name?.trim() || 'Add your name'}
-      </Text>
+                    <View className="ml-4 flex-1">
+                      <Text className="font-sans-semibold text-[16px] text-ink">
+                        {parent?.name?.trim() || 'Add your name'}
+                      </Text>
 
-      <Text
-        className="font-sans text-slate"
-        style={{
-          marginTop: 4,
-          fontSize: 12.5,
-        }}
-      >
-        {parent?.email}
-      </Text>
+                      <Text className="font-sans mt-1 text-[13px] text-slate">
+                        {parent?.email}
+                      </Text>
 
-      <Text
-        className="font-sans-semibold"
-        style={{
-          marginTop: 5,
-          fontSize: 12,
-          color: ACCENT,
-        }}
-      >
-        Edit profile
-      </Text>
-    </View>
+                      <Text className="font-sans-semibold mt-1 text-[12px] text-primary">
+                        Edit profile
+                      </Text>
+                    </View>
 
-    <Ionicons
-      name="chevron-forward"
-      size={19}
-      color="#92979E"
-    />
-  </View>
-</Pressable>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={19}
+                      color={colors.slate}
+                    />
+                  </View>
+                </Card>
+              </Touchable>
 
-{/* LINKED ATHLETE */}
-<View
-  style={{
-    marginTop: 28,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 11,
-  }}
->
-  <Text
-    className="font-sans-semibold text-ink"
-    style={{
-      fontSize: 15,
-    }}
-  >
-    Linked Athlete
-  </Text>
+              <View className="mb-3 mt-8 flex-row items-center justify-between">
+                <Text className="font-sans-semibold text-[15px] text-ink">
+                  Linked Athlete
+                </Text>
 
-  <Pressable
-    onPress={() => router.push('/parent/link-athlete')}
-  >
-    <Text
-      className="font-sans-semibold"
-      style={{
-        fontSize: 12,
-        color: ACCENT,
-      }}
-    >
-      Link another
-    </Text>
-  </Pressable>
-</View>
+                <Touchable
+                  onPress={() => router.push('/parent/link-athlete')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Link another athlete"
+                  className="px-1 py-2"
+                >
+                  <Text className="font-sans-semibold text-[12px] text-primary">
+                    Link another
+                  </Text>
+                </Touchable>
+              </View>
 
-{athlete ? (
-  <Pressable
-    onPress={() =>
-      router.push(`/parent/athlete/${athlete.id}` as any)
-    }
-    style={({ pressed }) => ({
-      padding: 18,
-      borderWidth: 1,
-      borderColor: '#E5E7EA',
-      borderRadius: 16,
-      backgroundColor: pressed ? '#FAFAFA' : '#FFFFFF',
-      flexDirection: 'row',
-      alignItems: 'center',
-    })}
-  >
-    <View
-      style={{
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: '#F2F3F4',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text
-        className="font-display"
-        style={{
-          fontSize: 16,
-          color: '#2D3034',
-        }}
-      >
-        {athlete.name
-          ?.split(/\s+/)
-          .slice(0, 2)
-          .map((word) => word[0])
-          .join('')
-          .toUpperCase() ?? 'A'}
-      </Text>
-    </View>
+              {athlete ? (
+                <Touchable
+                  onPress={() =>
+                    router.push(`/parent/athlete/${athlete.id}` as any)
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${athlete.name ?? 'athlete'} profile`}
+                  scaleTo={0.99}
+                  dimTo={0.85}
+                >
+                  <Card bare>
+                    <View className="flex-row items-center p-4">
+                      <Avatar
+                        name={athlete.name ?? athlete.email ?? 'Athlete'}
+                        size={54}
+                      />
 
-    <View
-      style={{
-        flex: 1,
-        marginLeft: 14,
-      }}
-    >
-      <Text
-        className="font-sans-semibold text-ink"
-        style={{
-          fontSize: 16,
-        }}
-      >
-        {athlete.name ?? 'Athlete'}
-      </Text>
+                      <View className="ml-4 flex-1">
+                        <Text className="font-sans-semibold text-[16px] text-ink">
+                          {athlete.name ?? 'Athlete'}
+                        </Text>
 
-      <Text
-        className="font-sans text-slate"
-        style={{
-          marginTop: 4,
-          fontSize: 12.5,
-        }}
-      >
-        {athlete.position ?? 'Position not set'}
-      </Text>
+                        <Text className="font-sans mt-1 text-[13px] text-slate">
+                          {athlete.position ?? 'Position not set'}
+                        </Text>
 
-      {athlete.email ? (
-        <Text
-          className="font-sans text-slate"
-          style={{
-            marginTop: 3,
-            fontSize: 12,
-          }}
-        >
-          {athlete.email}
-        </Text>
-      ) : null}
-    </View>
+                        {athlete.email ? (
+                          <Text className="font-sans mt-1 text-[12px] text-slate">
+                            {athlete.email}
+                          </Text>
+                        ) : null}
+                      </View>
 
-    <Ionicons
-      name="chevron-forward"
-      size={19}
-      color="#92979E"
-    />
-  </Pressable>
-) : (
-  <Pressable
-    onPress={() => router.push('/parent/link-athlete')}
-    style={{
-      padding: 20,
-      borderWidth: 1,
-      borderColor: '#E5E7EA',
-      borderRadius: 16,
-      backgroundColor: '#FFFFFF',
-      alignItems: 'center',
-    }}
-  >
-    <Ionicons
-      name="person-add-outline"
-      size={24}
-      color={ACCENT}
-    />
+                      <Ionicons
+                        name="chevron-forward"
+                        size={19}
+                        color={colors.slate}
+                      />
+                    </View>
+                  </Card>
+                </Touchable>
+              ) : (
+                <Touchable
+                  onPress={() => router.push('/parent/link-athlete')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Link an athlete"
+                  scaleTo={0.99}
+                  dimTo={0.85}
+                >
+                  <Card bare>
+                    <View className="items-center p-6">
+                      <Ionicons
+                        name="person-add-outline"
+                        size={25}
+                        color={colors.primary}
+                      />
 
-    <Text
-      className="font-sans-semibold text-ink"
-      style={{
-        marginTop: 10,
-        fontSize: 14,
-      }}
-    >
-      Link an athlete
-    </Text>
-  </Pressable>
-)}
-{/* SETTINGS */}
-<Text
-  className="font-sans-semibold text-ink"
-  style={{
-    marginTop: 30,
-    marginBottom: 11,
-    fontSize: 15,
-  }}
->
-  Settings
-</Text>
+                      <Text className="font-sans-semibold mt-3 text-[14px] text-ink">
+                        Link an athlete
+                      </Text>
+                    </View>
+                  </Card>
+                </Touchable>
+              )}
 
-<View
-  style={{
-    borderWidth: 1,
-    borderColor: '#E5E7EA',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  }}
->
-  <Pressable
-    onPress={() => router.push('/parent/settings')}
-    style={{
-      minHeight: 64,
-      paddingHorizontal: 18,
-      flexDirection: 'row',
-      alignItems: 'center',
-    }}
-  >
-    <View
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F4F5F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Ionicons
-        name="settings-outline"
-        size={18}
-        color="#555B63"
-      />
-    </View>
+              <Text className="font-sans-semibold mb-3 mt-8 text-[15px] text-ink">
+                Settings
+              </Text>
 
-    <Text
-      className="font-sans-semibold text-ink"
-      style={{
-        flex: 1,
-        marginLeft: 13,
-        fontSize: 14,
-      }}
-    >
-      Account Settings
-    </Text>
+              <Touchable
+                onPress={() => router.push('/parent/settings')}
+                accessibilityRole="button"
+                accessibilityLabel="Open account settings"
+                scaleTo={0.99}
+                dimTo={0.85}
+              >
+                <Card bare>
+                  <View className="min-h-[64px] flex-row items-center px-4">
+                    <View className="h-9 w-9 items-center justify-center rounded-full bg-mist">
+                      <Ionicons
+                        name="settings-outline"
+                        size={18}
+                        color={colors.slate}
+                      />
+                    </View>
 
-    <Ionicons
-      name="chevron-forward"
-      size={19}
-      color="#92979E"
-    />
-  </Pressable>
-</View>
+                    <Text className="font-sans-semibold ml-3 flex-1 text-[14px] text-ink">
+                      Account Settings
+                    </Text>
 
-{/* SIGN OUT */}
-<Pressable
-  onPress={handleSignOut}
-  style={{
-    height: 50,
-    marginTop: 30,
-    borderWidth: 1,
-    borderColor: '#F0CBCB',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  }}
->
-  <Ionicons
-    name="log-out-outline"
-    size={18}
-    color="#C94D4D"
-  />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={19}
+                      color={colors.slate}
+                    />
+                  </View>
+                </Card>
+              </Touchable>
 
-  <Text
-    className="font-sans-semibold"
-    style={{
-      marginLeft: 8,
-      fontSize: 14,
-      color: '#C94D4D',
-    }}
-  >
-    Sign Out
-  </Text>
-</Pressable>
-
-</>
-)}
-</View>
-</ScrollView>
-</Screen>
-);
+              <View className="mt-8">
+                <Button
+                  label="Sign Out"
+                  variant="danger"
+                  icon="log-out-outline"
+                  onPress={handleSignOut}
+                />
+              </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
+  );
 }
