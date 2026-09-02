@@ -469,6 +469,7 @@ export function updateTeam(token: string, patch: TeamPatch): Promise<ApiTeam> {
 
 export type PostingPatch = Partial<{
   position: Position;
+  team_id: number;
   ideal_height_cm: number;
   ideal_weight_kg: number;
   expected_minutes: number;
@@ -772,4 +773,118 @@ export function assignCoach(
 
 export function unassignCoach(token: string, teamId: number): Promise<{ team: AdminTeam }> {
   return json(`/admin/teams/${teamId}/assign_coach`, { method: 'DELETE', token });
+}
+export type AdminDashboard = {
+  pending_applications: number;
+  active_opportunities: number;
+  pending_stat_requests: number;
+  registered_athletes: number;
+  teams_without_accounts: number;
+  waiting_for_parent: number;
+};
+
+export function getAdminDashboard(
+  token: string
+): Promise<AdminDashboard> {
+  return json<AdminDashboard>('/admin/dashboard', { token });
+}
+export function listAdminApplications(
+  token: string
+): Promise<{ applications: ApiConnection[] }> {
+  return json<{ applications: ApiConnection[] }>(
+    '/admin/applications',
+    { token }
+  );
+}
+
+export function updateAdminApplication(
+  token: string,
+  id: number,
+  status: ApiConnectionStatus
+): Promise<ApiConnection> {
+  return json<ApiConnection>(
+    `/admin/applications/${id}`,
+    {
+      method: 'PATCH',
+      token,
+      body: {
+        connection: {
+          status,
+        },
+      },
+    }
+  );
+}
+export function listAdminPostings(
+  token: string
+): Promise<{ postings: ApiPosting[] }> {
+  return json<{ postings: ApiPosting[] }>(
+    '/admin/postings',
+    { token }
+  );
+}
+
+export function createAdminPosting(
+  token: string,
+  posting: PostingPatch
+): Promise<ApiPosting> {
+  return json<ApiPosting>(
+    '/admin/postings',
+    {
+      method: 'POST',
+      token,
+      body: { posting },
+    }
+  );
+}
+
+export function updateAdminPosting(
+  token: string,
+  id: number,
+  posting: PostingPatch
+): Promise<ApiPosting> {
+  return json<ApiPosting>(
+    `/admin/postings/${id}`,
+    {
+      method: 'PATCH',
+      token,
+      body: { posting },
+    }
+  );
+}
+
+export function deleteAdminPosting(
+  token: string,
+  id: number
+): Promise<void> {
+  return json<void>(
+    `/admin/postings/${id}`,
+    {
+      method: 'DELETE',
+      token,
+    }
+  );
+}
+export type AdminUser = {
+  id: number;
+  name: string | null;
+  email: string;
+  role: UserRole;
+  avatar_url: string | null;
+  created_at: string;
+  team_name: string | null;
+};
+
+export function listAdminUsers(
+  token: string,
+  role?: UserRole
+): Promise<{ users: AdminUser[] }> {
+  const query = role
+    ? `?role=${role}`
+    : '';
+
+  return json<{ users: AdminUser[] }>(
+    `/admin/users${query}`,
+    { token }
+  );
 }

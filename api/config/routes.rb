@@ -38,6 +38,10 @@ patch "parent/profile", to: "parent_profiles#update"
 
   # --- Admin -------------------------------------------------------------
   namespace :admin do
+    get "dashboard", to: "dashboard#show"
+    resources :applications, only: %i[index update]
+    resources :postings, only: %i[index create update destroy]
+    resources :users, only: %i[index]
     resources :teams, only: %i[index create update] do
       post   :assign_coach, on: :member
       delete :assign_coach, on: :member, action: :unassign_coach

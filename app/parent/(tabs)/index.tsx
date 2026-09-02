@@ -1,4 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
+import { useThemeColors } from '../../../lib/theme';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -106,6 +107,7 @@ function formatApplicationDate(date: string) {
 
 export default function ParentHome() {
   const { requireToken } = useSession();
+  const colors = useThemeColors();
 
   const [athletes, setAthletes] = useState<LinkedAthlete[]>([]);
   const [applications, setApplications] = useState<ApiConnection[]>([]);
@@ -273,8 +275,8 @@ export default function ParentHome() {
                     marginTop: 28,
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: '#E5E7EA',
-                    backgroundColor: '#FFFFFF',
+                   borderColor: colors.border,
+                    backgroundColor: colors.surface,
                     overflow: 'hidden',
                   }}
                 >
@@ -286,7 +288,7 @@ export default function ParentHome() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       borderBottomWidth: 1,
-                      borderBottomColor: '#ECEDEF',
+                      borderBottomColor: colors.border,
                     }}
                   >
                     <Text
@@ -335,7 +337,7 @@ export default function ParentHome() {
                         alignItems: 'center',
                         borderBottomWidth:
                           index === pendingActions.length - 1 ? 0 : 1,
-                        borderBottomColor: '#ECEDEF',
+                        borderBottomColor: colors.border,
                       }}
                     >
                       <View
@@ -424,8 +426,8 @@ export default function ParentHome() {
       padding: 18,
       borderRadius: 15,
       borderWidth: 1,
-      borderColor: '#E5E7EA',
-      backgroundColor: '#FFFFFF',
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
     }}
@@ -515,8 +517,8 @@ export default function ParentHome() {
                   style={{
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: '#E5E7EA',
-                    backgroundColor: '#FFFFFF',
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
                     overflow: 'hidden',
                   }}
                 >
@@ -541,7 +543,7 @@ export default function ParentHome() {
                           alignItems: 'center',
                           borderBottomWidth:
                             index === recentActivity.length - 1 ? 0 : 1,
-                          borderBottomColor: '#ECEDEF',
+                          borderBottomColor: colors.border,
                         }}
                       >
                         <View

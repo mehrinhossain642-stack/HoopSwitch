@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useThemeColors } from '../../../lib/theme';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppHeader } from '../../../components/AppHeader';

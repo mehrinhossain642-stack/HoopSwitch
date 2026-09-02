@@ -18,7 +18,6 @@ export default function AdminLayout() {
         contentStyle: { backgroundColor: colors.bg },
       }}>
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="settings" options={{ presentation: 'card' }} />
       <Stack.Screen name="statsheet" options={{ presentation: 'card' }} />
     </Stack>
   );
